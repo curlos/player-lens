@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "coderabbit@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "permissions": {
+    "deny": ["Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr create:*)"]
+  }
+}

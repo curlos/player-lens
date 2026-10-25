@@ -1,0 +1,31 @@
+# Secrets: never commit keys
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+web/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# On-demand commentary cache written at runtime (pre-generated data/commentary/ is NOT ignored)
+data/commentary_ondemand/
+
+# Local-only notes (not published)
+CLAUDE.local.md
+docs/hackathon-rules.md

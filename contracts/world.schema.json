@@ -1,0 +1,286 @@
+{
+  "$defs": {
+    "Attributes": {
+      "additionalProperties": false,
+      "description": "Outfield attributes, 25-99. ``shot_stopping`` is for goalkeepers only.",
+      "properties": {
+        "pace": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Pace",
+          "type": "integer"
+        },
+        "passing": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Passing",
+          "type": "integer"
+        },
+        "vision": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Vision",
+          "type": "integer"
+        },
+        "finishing": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Finishing",
+          "type": "integer"
+        },
+        "dribbling": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Dribbling",
+          "type": "integer"
+        },
+        "defending": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Defending",
+          "type": "integer"
+        },
+        "positioning": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Positioning",
+          "type": "integer"
+        },
+        "composure": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Composure",
+          "type": "integer"
+        },
+        "strength": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Strength",
+          "type": "integer"
+        },
+        "work_rate": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Work Rate",
+          "type": "integer"
+        },
+        "stamina": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Stamina",
+          "type": "integer"
+        },
+        "set_pieces": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Set Pieces",
+          "type": "integer"
+        },
+        "shot_stopping": {
+          "anyOf": [
+            {
+              "maximum": 99,
+              "minimum": 25,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shot Stopping"
+        }
+      },
+      "required": [
+        "pace",
+        "passing",
+        "vision",
+        "finishing",
+        "dribbling",
+        "defending",
+        "positioning",
+        "composure",
+        "strength",
+        "work_rate",
+        "stamina",
+        "set_pieces"
+      ],
+      "title": "Attributes",
+      "type": "object"
+    },
+    "Gender": {
+      "enum": [
+        "male"
+      ],
+      "title": "Gender",
+      "type": "string"
+    },
+    "Player": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z]{3}_\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "team": {
+          "pattern": "^[a-z]{3}$",
+          "title": "Team",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "number": {
+          "maximum": 11,
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "slot": {
+          "minLength": 1,
+          "title": "Slot",
+          "type": "string"
+        },
+        "gender": {
+          "$ref": "#/$defs/Gender",
+          "default": "male"
+        },
+        "temperament": {
+          "$ref": "#/$defs/Temperament"
+        },
+        "attributes": {
+          "$ref": "#/$defs/Attributes"
+        },
+        "ovr": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Ovr",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "team",
+        "name",
+        "number",
+        "position",
+        "slot",
+        "temperament",
+        "attributes",
+        "ovr"
+      ],
+      "title": "Player",
+      "type": "object"
+    },
+    "Position": {
+      "enum": [
+        "GK",
+        "CB",
+        "FB",
+        "DM",
+        "CM",
+        "AM",
+        "W",
+        "ST"
+      ],
+      "title": "Position",
+      "type": "string"
+    },
+    "Team": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z]{3}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "abbr": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Abbr",
+          "type": "string"
+        },
+        "formation": {
+          "enum": [
+            "4-3-3",
+            "4-4-2"
+          ],
+          "title": "Formation",
+          "type": "string"
+        },
+        "color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Color",
+          "type": "string"
+        },
+        "keeper_color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Keeper Color",
+          "type": "string"
+        },
+        "players": {
+          "items": {
+            "$ref": "#/$defs/Player"
+          },
+          "maxItems": 11,
+          "minItems": 11,
+          "title": "Players",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "abbr",
+        "formation",
+        "color",
+        "keeper_color",
+        "players"
+      ],
+      "title": "Team",
+      "type": "object"
+    },
+    "Temperament": {
+      "enum": [
+        "calm",
+        "normal",
+        "hot-headed"
+      ],
+      "title": "Temperament",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The whole fictional world: seed and two teams. Written to data/world.json.",
+  "properties": {
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "teams": {
+      "items": {
+        "$ref": "#/$defs/Team"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Teams",
+      "type": "array"
+    }
+  },
+  "required": [
+    "seed",
+    "teams"
+  ],
+  "title": "World",
+  "type": "object"
+}
