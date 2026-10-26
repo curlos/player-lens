@@ -36,6 +36,7 @@ Every player has exactly one activity code per second, saved with his position. 
 | wall | In a free-kick wall |
 | set\_piece\_wait | Waiting outside the box at a corner or penalty |
 | take\_set\_piece | Taking the corner, free kick or penalty |
+| sent\_off | Sent off: walks to the bottom touchline (y = 68, 7.5 m left of halfway for Azure, right for Redmond) and stays there, so positions stay on the pitch and clear of the score bar (added in the build) |
 
 Events (things that can change a rating) have their own codes, such as pass, shot, goal, save, tackle, foul and pressure\_regain.
 

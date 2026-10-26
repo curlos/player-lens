@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "CommentaryLine": {
+      "additionalProperties": false,
+      "description": "One line, shaped so a studio could render it as a synchronized overlay.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "t": {
+          "maximum": 5400,
+          "minimum": 0,
+          "title": "T",
+          "type": "number"
+        },
+        "duration": {
+          "minimum": 0,
+          "title": "Duration",
+          "type": "number"
+        },
+        "player": {
+          "pattern": "^[a-z]{3}_\\d{2}$",
+          "title": "Player",
+          "type": "string"
+        },
+        "type": {
+          "minLength": 1,
+          "title": "Type",
+          "type": "string"
+        },
+        "importance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Importance",
+          "type": "number"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "audio_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audio Url"
+        },
+        "fact_check": {
+          "enum": [
+            "pass",
+            "fixed",
+            "removed",
+            "template"
+          ],
+          "title": "Fact Check",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "t",
+        "duration",
+        "player",
+        "type",
+        "importance",
+        "text",
+        "fact_check"
+      ],
+      "title": "CommentaryLine",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "GET /commentary response for one cached 1-minute chunk.",
+  "properties": {
+    "match": {
+      "title": "Match",
+      "type": "string"
+    },
+    "player": {
+      "pattern": "^[a-z]{3}_\\d{2}$",
+      "title": "Player",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "casual",
+        "analyst"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "lang": {
+      "enum": [
+        "en",
+        "es"
+      ],
+      "title": "Lang",
+      "type": "string"
+    },
+    "chunk": {
+      "maximum": 89,
+      "minimum": 0,
+      "title": "Chunk",
+      "type": "integer"
+    },
+    "status": {
+      "const": "ready",
+      "default": "ready",
+      "title": "Status",
+      "type": "string"
+    },
+    "lines": {
+      "items": {
+        "$ref": "#/$defs/CommentaryLine"
+      },
+      "title": "Lines",
+      "type": "array"
+    }
+  },
+  "required": [
+    "match",
+    "player",
+    "mode",
+    "lang",
+    "chunk",
+    "lines"
+  ],
+  "title": "CommentaryChunk",
+  "type": "object"
+}

@@ -1,0 +1,157 @@
+# Real-player blocklist for the roster generator (sim/roster.py).
+# A line with one word, or starting with 'surname:', blocks that surname; any other line blocks that full name.
+# Matching ignores case and accents. Focus: famous names plus real players whose names are
+# reachable from the pools in sim/names.py. A reviewer still scans the final 22 names by eye.
+
+# Distinctive surnames of famous players (blocked outright)
+Messi
+Ronaldo
+Neymar
+Mbappe
+Haaland
+Salah
+Kane
+Benzema
+Modric
+Lewandowski
+Bellingham
+Saka
+Foden
+Rashford
+Grealish
+Kimmich
+Neuer
+Griezmann
+Pogba
+Kante
+Valverde
+Vinicius
+Rodrygo
+Pedri
+Gavi
+Yamal
+Courtois
+Alisson
+Ederson
+Casemiro
+Firmino
+Fabinho
+Militao
+Marquinhos
+Raphinha
+Antony
+Gerrard
+Lampard
+Beckham
+Rooney
+Shearer
+Zidane
+Henry
+Pele
+Maradona
+Totti
+Pirlo
+Buffon
+Maldini
+Xavi
+Iniesta
+Busquets
+Puyol
+Casillas
+Figo
+Eusebio
+Cruyff
+Bergkamp
+Robben
+Sneijder
+Alaba
+Arnautovic
+Ozil
+Reus
+Gotze
+Schweinsteiger
+Lahm
+Klose
+Ballack
+Kroos
+Ramos
+Pique
+Morata
+Carvajal
+Isco
+Gomes
+surname: Van Dijk
+surname: De Jong
+surname: De Vries
+
+# Full names reachable from the pools (real players, current or retired)
+Thomas Muller
+Bruno Fernandes
+Bruno Alves
+Bruno Guimaraes
+Ricardo Pereira
+Ricardo Rodrigues
+Ricardo Carvalho
+Andre Silva
+Andre Gomes
+Andre Almeida
+Diogo Costa
+Diogo Dalot
+Tiago Silva
+Pedro Neto
+Pedro Pereira
+Joao Gomes
+Joao Pedro
+Joao Silva
+Joao Moutinho
+Joao Mario
+Jose Fonte
+Luis Figo
+Miguel Veloso
+Lucas Silva
+Lucas Moura
+Gabriel Silva
+Rafael Silva
+Felipe Melo
+Felipe Santos
+Matheus Pereira
+Guilherme Arana
+David Silva
+David Garcia
+David Lopez
+Daniel Parejo
+Daniel Carvajal
+Pablo Hernandez
+Pablo Sarabia
+Pablo Fornals
+Sergio Gomez
+Sergio Ramos
+Sergio Sanchez
+Carlos Martinez
+Carlos Fernandez
+Carlos Soler
+Javier Martinez
+Javier Hernandez
+Alvaro Fernandez
+Alvaro Gonzalez
+Alejandro Gomez
+Jorge Molina
+Callum Wilson
+Callum Robinson
+James Wilson
+Daniel Johnson
+Jack Robinson
+Jack Taylor
+Matthew Taylor
+James Roberts
+Quentin Bernard
+Lucas Hernandez
+Theo Hernandez
+Andrea Conti
+Matteo Ricci
+Lorenzo Colombo
+Giuseppe Rossi
+Luca Marino
+Marco Rossi
+Davide Bianchi
+Jose Gomes

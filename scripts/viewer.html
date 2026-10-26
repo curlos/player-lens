@@ -1,0 +1,263 @@
+<!doctype html>
+<!--
+  Dev-only match viewer for checking simulator output by eye (not the product frontend).
+  Run from the repo root:  python -m http.server 8000
+  Then open:               http://localhost:8000/scripts/viewer.html
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Viewer (dev)</title>
+<style>
+  body { margin: 0; background: #111; color: #ddd; font: 13px/1.4 system-ui, sans-serif; }
+  #app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 12px; padding: 12px; height: 100vh; box-sizing: border-box; }
+  #left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  #right { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  svg { width: 100%; background: #2E5A30; border-radius: 6px; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button, select { background: #222; color: #ddd; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  button.on { background: #6b8e23; color: #000; }
+  #timeline { flex: 1; min-width: 200px; }
+  .panel { background: #1b1b1b; border: 1px solid #333; border-radius: 6px; padding: 8px; overflow: auto; }
+  .panel h3 { margin: 0 0 6px; font-size: 12px; color: #9a9; text-transform: uppercase; letter-spacing: .05em; }
+  .row { padding: 2px 0; border-bottom: 1px solid #222; cursor: pointer; }
+  .row:hover { background: #262626; }
+  .pos { color: #7c7; } .neg { color: #e77; } .muted { color: #777; }
+  #score { font-size: 18px; font-weight: 700; }
+  .azc { color: #3B82F6; } .rdm { color: #E5484D; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div class="bar">
+      <select id="match"></select>
+      <span id="score"></span>
+      <span id="clock" style="font-size:18px;font-variant-numeric:tabular-nums"></span>
+      <span id="status" class="muted"></span>
+    </div>
+    <svg id="pitch" viewBox="-2 -2 109 72"></svg>
+    <div class="bar">
+      <button id="play">Play</button>
+      <span id="speeds"></span>
+      <input id="timeline" type="range" min="0" max="5400" step="1" value="0">
+      <label><input id="labels" type="checkbox"> activity labels</label>
+    </div>
+    <div class="bar" id="markers"></div>
+  </div>
+  <div id="right">
+    <div class="panel" id="sel" style="flex:0 0 auto"></div>
+    <div class="panel" style="flex:1 1 0"><h3>Rating log (selected player, up to now)</h3><div id="log"></div></div>
+    <div class="panel" style="flex:1 1 0"><h3>Events (last 20 s)</h3><div id="ticker"></div></div>
+  </div>
+</div>
+<script>
+const MATCHES = ["md38_title_decider", "md19_blowout", "md27_draw", "md38_title_decider_backup"];
+const SPEEDS = [1, 2, 4, 10, 30];
+const NS = "http://www.w3.org/2000/svg";
+const $ = (id) => document.getElementById(id);
+const S = { t: 0, playing: false, rate: 4, sel: "azc_09", data: null };
+
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const fmt = (t) => `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const minute = (t) => `${Math.floor(t / 60) + 1}'`;
+
+function drawPitch(svg) {
+  const line = { fill: "none", stroke: "rgba(255,255,255,.6)", "stroke-width": 0.25 };
+  el("rect", { x: 0, y: 0, width: 105, height: 68, ...line }, svg);
+  el("line", { x1: 52.5, y1: 0, x2: 52.5, y2: 68, ...line }, svg);
+  el("circle", { cx: 52.5, cy: 34, r: 9.15, ...line }, svg);
+  for (const gx of [0, 105]) {
+    const d = gx === 0 ? 1 : -1;
+    el("rect", { x: gx === 0 ? 0 : 105 - 16.5, y: 34 - 20.16, width: 16.5, height: 40.32, ...line }, svg);
+    el("rect", { x: gx === 0 ? 0 : 105 - 5.5, y: 34 - 9.16, width: 5.5, height: 18.32, ...line }, svg);
+    el("rect", { x: gx === 0 ? -1.5 : 105, y: 34 - 3.66, width: 1.5, height: 7.32, ...line }, svg);
+    el("circle", { cx: gx + d * 11, cy: 34, r: 0.3, fill: "rgba(255,255,255,.6)" }, svg);
+  }
+}
+
+let loadToken = 0;
+async function load(id) {
+  const token = ++loadToken;  // a newer load (match switched mid-fetch) makes this one stale
+  $("status").textContent = "Preparing match...";
+  const base = `../data/matches/${id}/`;
+  const [meta, events, ratings, positions] = await Promise.all(
+    // no-store: always read the files on disk, so regenerated matches show up on a plain reload.
+    ["meta", "events", "ratings", "positions"].map((n) => fetch(base + n + ".json", { cache: "no-store" }).then((r) => r.json())));
+  if (token !== loadToken) return;
+  const players = {};
+  for (const team of meta.teams) for (const p of team.players) players[p.id] = { ...p, team: team.id, color: team.color, keeper: team.keeper_color };
+  const tracks = {};
+  for (const e of positions.entities) tracks[e.id] = { xy: Int16Array.from(e.xy), act: e.act };
+  const byPlayer = {};
+  for (const r of ratings.entries) (byPlayer[r.player] ||= []).push(r);
+  S.data = { meta, events: events.events, ratings: ratings.entries, byPlayer, players, tracks };
+  S.t = 0;
+  $("timeline").max = meta.duration_s;
+  buildScene();
+  buildMarkers();
+  $("status").textContent = `seed ${meta.seed} - ${events.events.length} events, ${ratings.entries.length} rating entries`;
+  render();
+}
+
+let nodes = {};
+function buildScene() {
+  const svg = $("pitch");
+  svg.innerHTML = "";
+  drawPitch(svg);
+  nodes = { trail: el("polyline", { fill: "none", stroke: "#a3e635", "stroke-width": 0.35, opacity: 0.8 }, svg) };
+  S.hover = null;
+  const { meta, players } = S.data;
+  for (const id of meta.entity_order) {
+    const g = el("g", { style: "cursor:pointer" }, svg);
+    if (id === "ball") {
+      el("circle", { r: 0.6, fill: "#fff", stroke: "#222", "stroke-width": 0.12 }, g);
+    } else if (id === "ref") {
+      el("rect", { x: -0.7, y: -0.7, width: 1.4, height: 1.4, fill: "#000", stroke: "#fff", "stroke-width": 0.15, transform: "rotate(45)" }, g);
+    } else {
+      const p = players[id];
+      const gk = p.position === "GK";
+      el("circle", { r: 1.3, fill: gk ? p.keeper : p.color, stroke: "#fff", "stroke-width": 0.18 }, g);
+      const tx = el("text", { "text-anchor": "middle", "dominant-baseline": "central", "font-size": 1.3, "font-weight": 700, fill: gk ? "#111" : "#fff" }, g);
+      tx.textContent = p.number;
+      g.addEventListener("click", () => { S.sel = id; render(); });
+      g.addEventListener("mouseenter", () => { S.hover = id; render(); });
+      g.addEventListener("mouseleave", () => { if (S.hover === id) S.hover = null; render(); });
+    }
+    const ring = id in players ? el("circle", { r: 2, fill: "none", stroke: "#a3e635", "stroke-width": 0.3, visibility: "hidden" }, g) : null;
+    const label = id !== "ball" ? el("text", { y: 2.9, "text-anchor": "middle", "font-size": 1.1, fill: "#ffd", visibility: "hidden" }, g) : null;
+    nodes[id] = { g, ring, label };
+  }
+}
+
+function buildMarkers() {
+  const box = $("markers");
+  box.innerHTML = "";
+  const { events, players } = S.data;
+  for (const e of events) {
+    if (!["goal", "card_red", "card_yellow", "penalty"].includes(e.type)) continue;
+    const b = document.createElement("button");
+    const icon = { goal: "GOAL", card_red: "RED", card_yellow: "YEL", penalty: "PEN" }[e.type];
+    b.textContent = `${minute(e.t)} ${icon} #${players[e.player].number} ${players[e.player].name}`;
+    b.className = e.team;
+    b.onclick = () => { S.t = Math.max(0, e.t - 8); render(); };
+    box.appendChild(b);
+  }
+}
+
+function posAt(id, t) {
+  const xy = S.data.tracks[id].xy;
+  const n = xy.length / 2 - 1;
+  const i = Math.min(n, Math.floor(t)), j = Math.min(n, i + 1), f = t - Math.floor(t);
+  return [(xy[2 * i] + (xy[2 * j] - xy[2 * i]) * f) / 10, (xy[2 * i + 1] + (xy[2 * j + 1] - xy[2 * i + 1]) * f) / 10];
+}
+
+function ratingAt(id, t) {
+  let r = 6.0, last = null;
+  for (const e of S.data.byPlayer[id] || []) { if (e.t > t) break; r = e.rating_after; last = e; }
+  return { r, last };
+}
+
+function eventText(e) {
+  const P = S.data.players, n = (id) => (id ? P[id].name : "");
+  let s = `${e.type} ${n(e.player)}`;
+  if (e.other) s += ` -> ${n(e.other)}`;
+  if (e.outcome && e.outcome !== "none" && e.outcome !== "success") s += ` (${e.outcome})`;
+  if (e.xg != null) s += ` xG ${e.xg.toFixed(2)}`;
+  if (e.speed_kmh != null) s += ` ${Math.round(e.speed_kmh)} km/h`;
+  return s;
+}
+
+function render() {
+  if (!S.data) return;
+  const { meta, events, players, tracks } = S.data;
+  const t = Math.min(S.t, meta.duration_s);
+  const showLabels = $("labels").checked;
+  for (const id of meta.entity_order) {
+    const [x, y] = posAt(id, t);
+    const nd = nodes[id];
+    nd.g.setAttribute("transform", `translate(${x},${y})`);
+    const sel = id === S.sel;
+    if (nd.ring) nd.ring.setAttribute("visibility", sel ? "visible" : "hidden");
+    if (nd.label) {
+      const act = meta.activities[tracks[id].act[Math.floor(t)]];
+      nd.label.textContent = act;
+      nd.label.setAttribute("visibility", showLabels || sel ? "visible" : "hidden");
+    }
+  }
+  // Hover tag: number, name, position, OVR and live rating, drawn on top of every dot.
+  let tag = document.getElementById("hovertag");
+  if (tag) tag.remove();
+  if (S.hover && players[S.hover]) {
+    const hp = players[S.hover];
+    const [hx, hy] = posAt(S.hover, t);
+    const g = el("g", { id: "hovertag", transform: `translate(${hx},${hy - 3.2})`, "pointer-events": "none" }, $("pitch"));
+    const txt = `#${hp.number} ${hp.name} · ${hp.slot} · OVR ${hp.ovr} · ${ratingAt(S.hover, t).r.toFixed(1)}`;
+    el("rect", { x: -txt.length * 0.33, y: -1.1, width: txt.length * 0.66, height: 2.2, rx: 0.6, fill: "rgba(0,0,0,.8)" }, g);
+    el("text", { "text-anchor": "middle", "dominant-baseline": "central", "font-size": 1.15, fill: "#fff" }, g).textContent = txt;
+  }
+  // Trail: the selected player's last 8 seconds.
+  const pts = [];
+  for (let s = Math.max(0, Math.floor(t) - 8); s <= Math.floor(t); s++) pts.push(posAt(S.sel, s).join(","));
+  pts.push(posAt(S.sel, t).join(","));
+  nodes.trail.setAttribute("points", pts.join(" "));
+  // Score and clock.
+  let score = { azc: 0, rdm: 0 };
+  for (const e of events) { if (e.t > t) break; score = e.score; }
+  $("score").innerHTML = `<span class="azc">AZC</span> ${score.azc} - ${score.rdm} <span class="rdm">RDM</span>`;
+  $("clock").textContent = fmt(t);
+  $("timeline").value = Math.floor(t);
+  // Selected player.
+  const p = players[S.sel];
+  const { r } = ratingAt(S.sel, t);
+  const act = meta.activities[tracks[S.sel].act[Math.floor(t)]];
+  $("sel").innerHTML = `<h3>Selected player (click any dot)</h3>
+    <div style="font-size:16px"><b class="${p.team}">${p.name}</b> #${p.number} ${p.position} <span class="muted">OVR ${p.ovr}</span></div>
+    <div>Rating <b style="font-size:18px">${r.toFixed(1)}</b> - activity <b>${act}</b></div>`;
+  const log = (S.data.byPlayer[S.sel] || []).filter((e) => e.t <= t && e.delta !== 0).slice(-40).reverse();
+  $("log").innerHTML = log.map((e) => {
+    const vals = Object.entries(e.values).map(([k, v]) => `${k}=${players[v] ? players[v].name : v}`).join(" ");
+    return `<div class="row" data-t="${e.t}">${minute(e.t)} <span class="${e.delta > 0 ? "pos" : "neg"}">${e.delta > 0 ? "+" : ""}${e.delta.toFixed(2)}</span>
+      ${e.reason_code}${e.off_ball ? " <span class='muted'>(off-ball)</span>" : ""} <span class="muted">${vals} -> ${e.rating_after.toFixed(2)}</span></div>`;
+  }).join("") || "<span class='muted'>No changes yet</span>";
+  const recent = events.filter((e) => e.t <= t && e.t > t - 20 && e.type !== "shape_check").reverse();
+  $("ticker").innerHTML = recent.map((e) => `<div class="row ${e.team}" data-t="${e.t}">${fmt(e.t)} ${eventText(e)}</div>`).join("");
+  for (const row of document.querySelectorAll(".row[data-t]")) row.onclick = () => { S.t = Math.max(0, +row.dataset.t - 5); render(); };
+}
+
+// Controls
+for (const m of MATCHES) $("match").add(new Option(m, m));
+$("match").onchange = () => load($("match").value);
+$("play").onclick = () => { S.playing = !S.playing; $("play").textContent = S.playing ? "Pause" : "Play"; };
+for (const r of SPEEDS) {
+  const b = document.createElement("button");
+  b.textContent = `${r}x`;
+  b.onclick = () => { S.rate = r; for (const x of $("speeds").children) x.classList.toggle("on", x === b); };
+  if (r === S.rate) b.classList.add("on");
+  $("speeds").appendChild(b);
+}
+$("timeline").oninput = (e) => { S.t = +e.target.value; render(); };
+$("labels").onchange = render;
+document.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;  // keep native keys on form controls
+  if (e.code === "Space") { e.preventDefault(); $("play").click(); }
+  if (e.code === "ArrowLeft") { S.t = Math.max(0, S.t - 5); render(); }
+  if (e.code === "ArrowRight") { S.t += 5; render(); }
+});
+let last = performance.now();
+function frame(now) {
+  const dt = (now - last) / 1000; last = now;
+  if (S.playing && S.data) { S.t = Math.min(S.data.meta.duration_s, S.t + dt * S.rate); render(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+load(MATCHES[0]);
+</script>
+</body>
+</html>

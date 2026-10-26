@@ -51,7 +51,7 @@ Starts at 6.0. Code computes every number; the LLM only rephrases the explanatio
 - No provisional period. A rating moves from the first action, and a goal changes it instantly.
 - Explanations are templates written by code (same event, same text). The commentator agent then adds a personal voice on top of that factual log; any LLM rewording is optional.
 - Off-ball definitions follow the StatsBomb glossary: a counterpress is a pressure within 5 seconds of our own turnover; a pressure regain is the ball won back within 5 seconds of that pressure.
-- These are starting values and need tuning against simulator output.
+- These started as guesses; a first tuning pass is in `rating/config.py` and the owner accepted it as final for the hackathon (Oct 26). Ratings run slightly high (mean about 7.0).
 
 ## Chance quality (xG)
 

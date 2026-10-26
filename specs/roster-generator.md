@@ -101,5 +101,5 @@ Checks that must pass before the file is accepted:
 
 - Whether the target OVR gap (78 vs 74) gives the right goal rates; calibration may adjust it.
 - Decided: everyone except the star's attributes is generated, names included (no other hand-set players).
-- `sim/models.py` and `contracts/world.schema.json` need `first_name` and `nationality` fields added (code task, not done yet).
+- Done: `sim/models.py` `Player` now has required `first_name` and `nationality` (a nine-value enum), and `contracts/world.schema.json` was regenerated with `scripts/export_schemas.py`.
 - Whether a bench is needed later for substitutions (out of scope now).

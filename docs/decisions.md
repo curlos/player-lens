@@ -11,7 +11,7 @@
   - "Redmond" is Microsoft's HQ city (a place name, not a trademark). Don't name clubs after products (Copilot, Foundry, Fabric).
   - The mockup's AZU/CRC abbreviations are replaced everywhere by AZC/RDM.
 - **Names:** all fictional, mixed nationalities, as a real league would have. A famous-player blocklist check is part of the roster generator (not built yet). Overlapping surnames are fine; real full names are not. An AI can't guarantee a name isn't some obscure real pro, so the owner spot-checks the final list.
-- **Squads:** 11 starters plus about 5 bench players for realism. No substitutions in the match (`sim/models.py` allows 11-16 per squad).
+- **Squads:** 11 starters, no bench, no substitutions (stale earlier note said about 5 bench players; the roster spec and `sim/models.py` have exactly 11 per team).
 - **Redmond's formation:** 4-4-2, for tactical contrast with Azure's 4-3-3 (decided).
 - Gender field: every player has gender (default `male`); all generated players are male for now. User-facing copy stays gender-neutral.
 
@@ -34,6 +34,37 @@
 - **No teleporting** is guaranteed by construction: positions change only in `move_player()`, speed-capped. Property tests (not written yet) will check it.
 - **Pitch:** 105 x 68 m, meters, origin top-left; the SVG uses `viewBox="0 0 105 68"` so data and screen can't disagree. Positions are saved every second, compactly (flat integer arrays in decimeters); the frontend interpolates between them.
 - **Pydantic design:** `extra="forbid"` so typos fail loudly; `team.short` duplicates `team.id` but is validated to match; goalkeeper-only `gk_shot_stopping` lives on Player; attributes are nested under `attributes`.
+
+## Phase 1 build (Oct 25)
+
+Choices made while building the match data, where the docs left room or disagreed. All knobs live in `sim/config.py` and `rating/config.py`.
+
+- **Star name (owner decision).** The star is AZC #9 (`azc_09`), the highest-OVR Azure player, named by the generator like everyone else (Gabriel "G. Lima", Brazil). "R. Valdemar" in the frontend spec, match-files example and mockups was a placeholder; those specs now point at `data/world.json`.
+- **Event ids** follow Spec: Match Files (`e_0001`), not ARCHITECTURE's illustrative `ev_1843` (ARCHITECTURE updated).
+- **Event count** is about 4,500 to 5,500, not 1,500 to 2,000: every rating entry must point to an event, so the 30 to 45 s shape checks are events (roughly half the file). A shape check is added only when a player has had no other rating entry for 30 to 45 s.
+- **Bench:** the "11 starters plus about 5 bench players" line above is stale; the roster spec and models have 11 per team and no bench.
+- **Sent-off players** walk (via `move_player()`) to the bottom touchline (y = 68, x = 45 for Azure, 60 for Redmond, set in `sim/config.py`), away from the score bar at the top center, and stay there with a new activity code `sent_off`, so every position stays on the pitch. The frontend fades the dot out once they arrive (owner decision Oct 26). If a back-four player is sent off, the DM/CM #6 takes their slot.
+- **Shot speed** is capped at 108 km/h, because the ball cap is 30 m/s (the spec example shows 112).
+- **Blocklist** syntax: one word or `surname: X` blocks a surname, two or more words block a full name. Famous surnames from the pools (Van Dijk, De Jong, De Vries, Gomes) are blocked so no player reads as a famous one.
+- **Stopping rule** uses the exact per-tick braking sum (the spec allows "a short loop or closed form"); the `u (u + a) / (2a)` approximation let players overshoot touchlines. A per-axis wall cap keeps the acceleration limit true at the lines too.
+- **Calibration changes beyond the research formulas** (see `docs/validation-report.md`): pass completion gets a receiver-marking term and a harder "pass into the box" term; crosses complete less often; a goal-side defender stops a carrier running straight at goal; near their own goal the two nearest defenders always press. Passing and duel skill sensitivity were softened (`PASS_Z` 0.18, `DUEL_SKILL` 0.22) and Redmond's tactics set to press 0.5, line 0.45 (still a deeper block than Azure's 0.8 and 0.7) so a title decider between first and second is not one-sided: Azure win about 58%, draw 22%, Redmond 19% over 200 seeds.
+- **Pressure** counts a presser closing in (moving at 3+ m/s) within 1.1 m of the carrier, once per presser and carrier per 30 s; this lands pressures per team inside 115 to 175.
+- **Rating tuning (first pass):** repeat decay `max(0.25, 0.85^n)`; shape-check credit +0.02 only for staying within 3 m of the shape target while working; a pressure regain needs the presser within 10 m of the ball when it is won. Mean final rating about 7.0 (SD 0.8).
+- **Accepted as is (owner, Oct 26):** ratings run slightly high (mean about 7.0 vs about 6.7 on real sites), and the simulator produces too many duels (a striker can attempt about 20 dribbles a match vs 2 to 4 in real football; repeat decay keeps the rating effect small). Fixing duels would change every match and the library seeds, so neither is tuned further for the hackathon.
+- **Off-ball thresholds** (recovery run 12 m in 8 s ending goal-side, marking denial 2.5 m for half of a 5-minute window with no pass received, decoy run drags a defender 6 m while a teammate gets 4 m of space) are guesses, listed in `rating/config.py`.
+- **Penalty event** is logged when the penalty is awarded (outcome `awarded`); the kick itself is a `shot`. Other restarts are logged when taken.
+- **Library seeds** come from `scripts/find_seeds.py` (criteria in its docstring) and are stored in `sim/library.py`.
+- **Hero match (owner pick, Oct 26):** seed 9447. 2-2 after Redmond's 88' equaliser, then Lima's 89' title winner; Azure play with 10 men from 51' (J. Pereira, second yellow). The exact "2-2 from mid-match until a winner after 85'" pattern was not found in 16,000 seeds; the two closest both had a late equaliser, and 9447 was picked because the climax belongs to the default player. The first hero (seed 2378: Lima twice, 83' penalty winner by M. Thomas) is kept as `md38_title_decider_backup`, built and tested but not listed in the picker. Any change to the world or the simulator changes every match, so re-run the search after one.
+
+- **Spells built early (Oct 26):** `rating/spells.py` labels each 5-minute window (`control`, `high_press`, `end_to_end`, `even`) from `events.json` only, so the agent pipeline can call it at runtime without positions. Not written into the match files (the four-file contract stays as is). Thresholds are guesses tuned to the library matches.
+
+## Playback controls (owner, Oct 26)
+
+- **Speeds are 1x, 2x, 4x, 10x, 30x** (was 1x-10x in six steps), copied from the dev viewer so a full match can be skimmed in 3 minutes. Commentary still plays at 1x only.
+- **Highlights row** below the pitch: goals, cards and penalties as chips; a click seeks to 8 s before the event so the build-up plays. Labels use the football minute (87:12 shows as 88').
+- **Activity labels** checkbox in the control bar, off by default: every dot shows what that player is doing (jog, hold shape, press...).
+- **Shirt numbers in highlight chips** (`88' GOAL #10 J. Ribeiro`), because the pitch shows numbers, not names.
+- **Hover tag** on any player dot: number, name, position, OVR and live match rating. Frontend only; the data is already in `meta.json` and `ratings.json`.
 
 ## Presentation
 

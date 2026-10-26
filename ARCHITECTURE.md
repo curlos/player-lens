@@ -54,7 +54,7 @@ These are written as invariants now so tests can be written from them later.
 5. Players and ball stay within the pitch (ball may leave for throw-ins, corners and goal kicks as explicit events).
 6. Ball speed is capped at a realistic shot speed (about 30 m/s).
 7. Exactly 11 players per side, unique shirt numbers per team.
-8. Every event has a **unique ID** (e.g. `ev_1843`). Time alone does not identify an event.
+8. Every event has a **unique ID** (e.g. `e_1843`; format in Spec: Match Files). Time alone does not identify an event.
 9. Match length: exactly 90:00 (5,400 seconds), no stoppage time.
 
 ### Model
@@ -154,7 +154,7 @@ Roster (confirmed Oct 24). One job each, each reads the previous output and writ
 
 **Personalizer is a separate agent (decided Oct 24).** The Commentator writes one canonical, fact-based line per moment and Fact Guard checks it once; the Personalizer then rewrites it into the four versions (Casual or Analyst, English or Spanish). This avoids running the Commentator and Fact Guard four times per moment and gives the pipeline a clear, visible handoff. Guard rule: the Personalizer may only use facts already present in the checked line and the moment's fact list, and a cheap deterministic check confirms that every number and name in each variant appears in those facts; a failed variant retries once, then falls back to the canonical line or a template. Final pipeline: Interpreter, Moments, Commentator, Fact Guard, Personalizer, Voice Director.
 
-**Commentary cadence (decided Oct 24).** The selected player's commentary is a near-continuous stream: the gap between the end of one clip and the start of the next is at least 5 s and at most 15 s. Big moments (importance 0.8 or more: goals, red cards, penalties) may interrupt the 5 s minimum. Lines are short (about 6 to 14 words, 2 to 5 s of speech). Triggers, in priority order: a goal or card anywhere in the match; a key event involving the player (shot, key pass, tackle, foul, card); a rating change of 0.10 or more; an off-ball moment (pressure regain, counterpress, recovery run, marking denial, decoy run); and, when nothing else fires within the 15 s limit, a filler line built from code-computed facts (current activity, distance run, passes completed, rating trend, position relative to the ball, team spell). After a goal: one line immediately, a short reaction about 8 s later, then back to normal. If a line would start before the previous clip ends, the lower-importance one is dropped. Above 1x speed (2x to 10x) commentary is off and no commentary is fetched. Expect roughly 450 lines per player per match, about 1.5 times the earlier 300-moment estimate, so measure cost on a small batch; filler lines must draw on enough distinct facts to avoid repetition.
+**Commentary cadence (decided Oct 24).** The selected player's commentary is a near-continuous stream: the gap between the end of one clip and the start of the next is at least 5 s and at most 15 s. Big moments (importance 0.8 or more: goals, red cards, penalties) may interrupt the 5 s minimum. Lines are short (about 6 to 14 words, 2 to 5 s of speech). Triggers, in priority order: a goal or card anywhere in the match; a key event involving the player (shot, key pass, tackle, foul, card); a rating change of 0.10 or more; an off-ball moment (pressure regain, counterpress, recovery run, marking denial, decoy run); and, when nothing else fires within the 15 s limit, a filler line built from code-computed facts (current activity, distance run, passes completed, rating trend, position relative to the ball, team spell). After a goal: one line immediately, a short reaction about 8 s later, then back to normal. If a line would start before the previous clip ends, the lower-importance one is dropped. Above 1x speed (2x to 30x) commentary is off and no commentary is fetched. Expect roughly 450 lines per player per match, about 1.5 times the earlier 300-moment estimate, so measure cost on a small batch; filler lines must draw on enough distinct facts to avoid repetition.
 
 The rating engine sits beside this as a deterministic step; its output is shared state, not an LLM agent.
 
@@ -205,8 +205,9 @@ The rating engine sits beside this as a deterministic step; its output is shared
 - Audio: Web Audio crowd loops (murmur always on, clip and volume chosen by event importance, Azure City is the home side) plus pre-generated commentary clips. A first click unlocks audio; mute button.
 - Start flow: no homepage. The first view is the Start match overlay (intro copy, Start button, Enter or Space also starts) that unlocks audio; a "Preparing match" state shows while data loads.
 - Score bar centered at the top of the pitch (AZC, score, RDM, clock). A tiny card icon appears under a team's abbreviation only after that team has a card; "10 men" after a red card.
-- Control bar auto-hides and is hidden by default: pause/play, 1x | 2x | 4x | 6x | 8x | 10x, a timeline with goal and card markers, and a gear that opens the View popover (Mute, Show ratings, Colorblind colors, Match info, Settings).
-- Above-1x rule (2x to 10x): pitch, ratings and rating log keep running; commentary text and voice are off and no commentary chunks are fetched; crowd stays on. Only these six speeds exist: 1x, 2x, 4x, 6x, 8x, 10x.
+- Control bar auto-hides and is hidden by default: pause/play, 1x | 2x | 4x | 10x | 30x, a timeline with goal and card markers, an Activity labels toggle, and a gear that opens the View popover (Mute, Show ratings, Colorblind colors, Match info, Settings).
+- Above-1x rule (2x to 30x): pitch, ratings and rating log keep running; commentary text and voice are off and no commentary chunks are fetched; crowd stays on. Only these five speeds exist: 1x, 2x, 4x, 10x, 30x (owner decision Oct 26).
+- Highlights row below the pitch: every goal, card and penalty as a clickable chip that jumps to a few seconds before the event.
 - Right sidebar tabs: Player and All ratings. All ratings is one vertical lineup pitch (Azure top 4-3-3, Redmond bottom 4-4-2, no names) with a rating pill on each dot.
 - Rating colors (default): below 5.0 red, 5.0-5.9 orange, 6.0-6.9 yellow, 7.0-7.9 light green, 8.0 and above strong green, number always visible. "Colorblind colors" switches to blue-to-orange. Lime is reserved for the selected-player ring, trail and accent.
 - Dots: Azure #3B82F6, Redmond #E5484D, white outline; selected player gets a thin lime ring, one thin trail and a name tag above the dot; other dots are untagged.
@@ -215,8 +216,8 @@ The rating engine sits beside this as a deterministic step; its output is shared
 
 ```json
 {"t": 3792, "ball": [52.1, 34.0], "players": {"AZC_6": [48.2, 30.5]}}
-{"id": "ev_1843", "t": 3792, "type": "pass", "player": "AZC_6", "receiver": "AZC_9", "from": [48.2, 30.5], "to": [60.0, 28.1], "outcome": "complete", "progressive": true, "difficulty": 0.4}
-{"event": "ev_1843", "t": 3792, "player": "AZC_6", "rating": [7.1, 7.2], "delta": 0.1, "reason": "Progressive pass under pressure"}
+{"id": "e_1843", "t": 3792, "type": "pass", "player": "AZC_6", "receiver": "AZC_9", "from": [48.2, 30.5], "to": [60.0, 28.1], "outcome": "complete", "progressive": true, "difficulty": 0.4}
+{"event": "e_1843", "t": 3792, "player": "AZC_6", "rating": [7.1, 7.2], "delta": 0.1, "reason": "Progressive pass under pressure"}
 {"moment": "m_212", "player": "AZC_6", "mode": "analyst", "lang": "en", "text": "...", "fact_check": "pass"}
 ```
 
@@ -225,7 +226,7 @@ Player ID format: `lowercase team abbreviation plus two-digit shirt number (e.g.
 **Match files (added in review).** The simulator is a Python program run offline (`python -m sim.run --seed N`): it simulates the match, runs the rating engine on the result and writes four JSON files per match into `data/matches/<match_id>/`. FastAPI serves them as plain static files; the browser downloads all four in parallel at page load (a "Preparing match" state covers it) and after that every seek and every second of playback is local.
 
 - `meta.json`: teams, roster (id, name, number, position, overall, gender), formations, duration, final score. A few KB.
-- `events.json`: every event with a unique ID, time, type, players, from/to coordinates, outcome, xG and importance. About 1,500 to 2,000 events.
+- `events.json`: every event with a unique ID, time, type, players, from/to coordinates, outcome, xG and importance. About 4,500 to 5,500 events, roughly half of them shape checks.
 - `ratings.json`: the rating log, one entry per rating change (event ID, time, player, delta, reason). A player's rating at time t is 6.0 plus the sum of their deltas up to t, so any second can be computed in either direction.
 - `positions.json`: where all 24 entities (22 players, referee, ball) are every second for the whole match (about 5,400 seconds). Compact format: one flat array of integers per entity in decimeters, `[x0, y0, x1, y1, ...]`, so index 2i and 2i+1 are x and y at second i (610, 300 means x 61.0 m, y 30.0 m). About 300 to 500 KB gzipped. The browser slides dots smoothly between seconds.
 
@@ -300,4 +301,4 @@ Azure free account: $200 credit for 30 days. Sign up early so it covers judging 
 - [x] Final agent roster: confirmed Oct 24 (Personalizer is a separate agent)
 - [x] Commentary cadence: decided Oct 24 (minimum gap 5 s, maximum silence 15 s; see Commentary cadence above)
 - [x] Redmond formation: 4-4-2
-- [ ] Rating deltas tuning against simulator output
+- [x] Rating deltas tuning: Closed Oct 26 (owner): first-pass values kept as final for the hackathon; see docs/decisions.md

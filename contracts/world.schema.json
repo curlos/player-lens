@@ -115,6 +115,22 @@
       "title": "Gender",
       "type": "string"
     },
+    "Nationality": {
+      "description": "Where a player's name comes from (specs/roster-generator.md); fictional players, real name pools.",
+      "enum": [
+        "England",
+        "Spain",
+        "Brazil",
+        "France",
+        "Germany",
+        "Portugal",
+        "Austria",
+        "Netherlands",
+        "Italy"
+      ],
+      "title": "Nationality",
+      "type": "string"
+    },
     "Player": {
       "additionalProperties": false,
       "properties": {
@@ -132,6 +148,14 @@
           "minLength": 1,
           "title": "Name",
           "type": "string"
+        },
+        "first_name": {
+          "minLength": 1,
+          "title": "First Name",
+          "type": "string"
+        },
+        "nationality": {
+          "$ref": "#/$defs/Nationality"
         },
         "number": {
           "maximum": 11,
@@ -168,6 +192,8 @@
         "id",
         "team",
         "name",
+        "first_name",
+        "nationality",
         "number",
         "position",
         "slot",

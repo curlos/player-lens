@@ -31,11 +31,25 @@ Rules for all agents:
 - Anything numeric (distances, speeds, xG, minutes, scores, ratings) is computed by code and passed in as fact fields. An LLM may repeat a number but never compute or invent one.
 - Agents are stateless between chunks. The only carry-over is a `previous_lines` list (last 3 final lines of the player) passed to the Commentator to avoid repetition.
 
+## Inputs ready from Phase 1 (match data)
+
+Built and tested on Oct 25-26; the agent pipeline reads these and never recomputes them.
+
+- **Match files:** `data/matches/<match_id>/{meta,events,ratings}.json` (field reference: Spec: Match Files). The backend needs only `meta`, `events` and `ratings`, never `positions`. Library: `md38_title_decider` (hero, seed 9447), `md19_blowout`, `md27_draw`, all listed in `sim/library.py`; `md38_title_decider_backup` exists but is not served in the picker.
+- **Loading and validating:** Pydantic models `Meta`, `EventsFile`, `RatingsFile` in `sim/models.py` (for example `EventsFile.model_validate_json(text)`); contracts in `contracts/`. Event ids are `e_0001` upward, rating ids `r_0001` upward, player ids `azc_09`.
+- **Default player:** `meta.default_player` is `azc_09` (G. Lima). Player names, numbers, slots, OVR, gender (for pronouns) and attributes are in `meta.teams[].players[]`.
+- **Rating reasons:** each entry has `reason_code` and `values` (the full list of 34 codes and their values is in Spec: Frontend, "Rating log reason text"). `values` holds player ids, `xg`, `distance_m` and similar; the Interpreter copies these into fact `values`, it never computes new numbers. `off_ball: true` marks off-ball credit.
+- **Linked events:** an event's optional `related` list points to its cause (a goal's shot and key pass, a pressure regain's pressure, an error's turnover and goal), so facts can cite the chain.
+- **Event importance:** `importance` (0-1) is already on every event (code-computed, Spec: Rating Model); Moments uses it as is. "Involves the selected player" is a per-request boost the pipeline adds.
+- **Spells:** `rating.spells.compute_spells(events)` returns 18 windows of 5 minutes: `{window, start_t, end_t, label, team, values}`. `label` is `control` (team = the side in control, the other is pinned back), `high_press` (team = the pressing side), `end_to_end` or `even`. `values` holds the numbers commentary may cite: `pass_share_azc/rdm`, `passes_*`, `pass_completion_*`, `final_third_*`, `pressures_*`, `high_pressures_*`, `shots_*`, `goals_*`, `turnovers`, `passes_per_minute`. Thresholds are in `rating/config.py`. A `spell` fact cites `spell:<window>` instead of an event id.
+- **Activities** (walk, jog, press, track back...) live only in `positions.json`. If filler lines need the player's current activity, read `act` from that file once per match at startup; it is the only positions use the backend may need.
+- **Commentary contracts already defined:** `CommentaryChunk`, `CommentaryLine`, `ChunkPreparing` (the 202 body) and `Trace` in `agents/models.py`, exported to `contracts/commentary_chunk.schema.json`, `commentary_preparing.schema.json` and `trace.schema.json`. The per-agent models (facts, moments, lines, Fact Guard results, variants, voice) are still to be written in `agents/models.py` and exported the same way.
+
 ## Agent contracts
 
 All ids are strings. `t` is match seconds. Field names are final; Claude Code may add optional fields but not rename these.
 
-**Shared input (built by code per chunk):** `match_id`, `player` (id, name, number, position), `window` (start\_t, end\_t), `events` (the match events in the window, plus the player's events from the 10 s before it), `rating_changes` (the player's rating log entries in the window), `context` (score, minute, team shape, code-computed spells per 5-minute window), `previous_lines`.
+**Shared input (built by code per chunk):** `match_id`, `player` (id, name, number, position), `window` (start\_t, end\_t), `events` (the match events in the window, plus the player's events from the 10 s before it), `rating_changes` (the player's rating log entries in the window), `context` (score, minute, team shape, code-computed spells per 5-minute window from `rating/spells.py`, see below), `previous_lines`.
 
 **1. Interpreter** (light LLM)
 
@@ -86,7 +100,7 @@ All ids are strings. `t` is match seconds. Field names are final; Claude Code ma
 
 Outcomes: first pass clean gives `pass`; fixed and re-validated gives `fixed` with `before` and `after`; still failing gives `removed` (the moment falls back to a template line, marked in the trace).
 
-**Personalizer guard (code):** every number and name in each variant must appear in the checked line or the moment's facts, and every action verb must be allowed for the moment's fact kinds (the same table the Fact Guard validator uses in `agents/fact_guard.py`; for Spanish, the table lists the Spanish verbs too). A failing variant retries once, then falls back to the canonical line (English) or the template (Spanish).
+**Personalizer guard (code):** each variant runs through the same validator function the Fact Guard uses (`agents/fact_guard.py`), with the checked line and the moment's facts as the source, so it gets every Fact Guard check: numbers, player and team names, action verbs allowed for the fact kinds, no real names, no events after `t`, no result stated early (for Spanish, the verb table lists the Spanish verbs too). On top of that: (1) every unit must match the fact value's unit (m, km/h, xG), and (2) every location, tactic or relationship word (for example "box", "wing", "high press", "marking", "assist") must appear in the checked line or a fact `label`, or be in the allowed-term list for that fact kind, so the Personalizer cannot add a claim the facts do not carry (for Spanish, the term lists hold the Spanish equivalents). A failing variant retries once, then falls back to the canonical line (English) or the template (Spanish).
 
 **Template fallback:** `agents/templates.py` holds 3 to 5 templates per fact kind, per mode and language, filled from `values`. Used whenever an LLM step fails twice, the cap is hit, or Foundry is unreachable.
 

@@ -33,7 +33,7 @@ Small (a few KB). Everything the UI needs before playback.
 
 **Team object:** `id`, `name`, `abbr`, `formation`, `color`, `keeper_color`, `players[]`.
 
-**Player object:** `id`, `name`, `number`, `position`, `slot`, `ovr`, `gender`, `temperament`, `attributes{}` (the full attribute set, since the Analyst commentary may cite them).
+**Player object:** `id`, `name`, `number`, `position`, `slot`, `ovr`, `gender`, `temperament`, `attributes{}` (the full attribute set, since the Analyst commentary may cite them), plus optional `first_name` and `nationality`.
 
 ```json
 {
@@ -42,7 +42,7 @@ Small (a few KB). Everything the UI needs before playback.
   "score": {"azc": 3, "rdm": 2}, "default_player": "azc_09",
   "teams": [{"id": "azc", "name": "Azure City", "abbr": "AZC", "formation": "4-3-3",
     "color": "#3B82F6", "keeper_color": "#E6F23A",
-    "players": [{"id": "azc_09", "name": "R. Valdemar", "number": 9, "position": "ST", "slot": "ST",
+    "players": [{"id": "azc_09", "name": "G. Lima", "number": 9, "position": "ST", "slot": "ST",
       "ovr": 91, "gender": "male", "temperament": "normal", "attributes": {"finishing": 94}}]}],
   "activities": ["stand", "walk", "jog", "run", "sprint"],
   "entity_order": ["azc_01", "azc_02", "rdm_11", "ref", "ball"]
@@ -53,7 +53,7 @@ The example is shortened; real files list all 11 players per team and all 24 ent
 
 ## events.json
 
-A JSON array of events in time order (about 1,500 to 2,000), wrapped as `{match_id, schema_version, events[]}`.
+A JSON array of events in time order (about 4,500 to 5,500; roughly half are shape checks, because every rating entry points to an event and every player gets an entry at least every 30 to 45 s), wrapped as `{match_id, schema_version, events[]}`.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -69,6 +69,7 @@ A JSON array of events in time order (about 1,500 to 2,000), wrapped as `{match_
 | `speed_kmh` | number, optional | shots only |
 | `importance` | number | 0 to 1, computed by code (used by crowd audio and commentary) |
 | `score` | `{azc, rdm}` | score right after this event |
+| `related` | string\[\], optional | linked event ids (a goal's shot and key pass, a pressure regain's pressure, an error's turnover and goal) |
 
 **Event types that can change a rating:** pass, key\_pass, shot, goal, save, tackle, interception, block, clearance, aerial\_duel, dribble, foul, handball, offside, card\_yellow, card\_red, pressure, pressure\_regain, counterpress, recovery\_run, marking\_denial, decoy\_run, shape\_check, error\_leading\_to\_goal, big\_chance\_missed, injury, gk\_claim, gk\_sweep.
 

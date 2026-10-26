@@ -1,0 +1,22 @@
+{
+  "additionalProperties": false,
+  "description": "GET /commentary 202 response while a chunk is generating.",
+  "properties": {
+    "status": {
+      "const": "preparing",
+      "default": "preparing",
+      "title": "Status",
+      "type": "string"
+    },
+    "retry_after": {
+      "minimum": 1,
+      "title": "Retry After",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "retry_after"
+  ],
+  "title": "ChunkPreparing",
+  "type": "object"
+}

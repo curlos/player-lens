@@ -1,0 +1,420 @@
+{
+  "$defs": {
+    "Attributes": {
+      "additionalProperties": false,
+      "description": "Outfield attributes, 25-99. ``shot_stopping`` is for goalkeepers only.",
+      "properties": {
+        "pace": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Pace",
+          "type": "integer"
+        },
+        "passing": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Passing",
+          "type": "integer"
+        },
+        "vision": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Vision",
+          "type": "integer"
+        },
+        "finishing": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Finishing",
+          "type": "integer"
+        },
+        "dribbling": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Dribbling",
+          "type": "integer"
+        },
+        "defending": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Defending",
+          "type": "integer"
+        },
+        "positioning": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Positioning",
+          "type": "integer"
+        },
+        "composure": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Composure",
+          "type": "integer"
+        },
+        "strength": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Strength",
+          "type": "integer"
+        },
+        "work_rate": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Work Rate",
+          "type": "integer"
+        },
+        "stamina": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Stamina",
+          "type": "integer"
+        },
+        "set_pieces": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Set Pieces",
+          "type": "integer"
+        },
+        "shot_stopping": {
+          "anyOf": [
+            {
+              "maximum": 99,
+              "minimum": 25,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shot Stopping"
+        }
+      },
+      "required": [
+        "pace",
+        "passing",
+        "vision",
+        "finishing",
+        "dribbling",
+        "defending",
+        "positioning",
+        "composure",
+        "strength",
+        "work_rate",
+        "stamina",
+        "set_pieces"
+      ],
+      "title": "Attributes",
+      "type": "object"
+    },
+    "Gender": {
+      "enum": [
+        "male"
+      ],
+      "title": "Gender",
+      "type": "string"
+    },
+    "MatchPlayer": {
+      "additionalProperties": false,
+      "description": "A roster entry as copied into meta.json (the frontend never reads world.json).",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z]{3}_\\d{2}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "first_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First Name"
+        },
+        "nationality": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Nationality"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "number": {
+          "maximum": 11,
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "slot": {
+          "title": "Slot",
+          "type": "string"
+        },
+        "ovr": {
+          "maximum": 99,
+          "minimum": 25,
+          "title": "Ovr",
+          "type": "integer"
+        },
+        "gender": {
+          "$ref": "#/$defs/Gender"
+        },
+        "temperament": {
+          "$ref": "#/$defs/Temperament"
+        },
+        "attributes": {
+          "$ref": "#/$defs/Attributes"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "number",
+        "position",
+        "slot",
+        "ovr",
+        "gender",
+        "temperament",
+        "attributes"
+      ],
+      "title": "MatchPlayer",
+      "type": "object"
+    },
+    "MatchTeam": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "azc",
+            "rdm"
+          ],
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "abbr": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Abbr",
+          "type": "string"
+        },
+        "formation": {
+          "enum": [
+            "4-3-3",
+            "4-4-2"
+          ],
+          "title": "Formation",
+          "type": "string"
+        },
+        "color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Color",
+          "type": "string"
+        },
+        "keeper_color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "title": "Keeper Color",
+          "type": "string"
+        },
+        "players": {
+          "items": {
+            "$ref": "#/$defs/MatchPlayer"
+          },
+          "maxItems": 11,
+          "minItems": 11,
+          "title": "Players",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "abbr",
+        "formation",
+        "color",
+        "keeper_color",
+        "players"
+      ],
+      "title": "MatchTeam",
+      "type": "object"
+    },
+    "Nationality": {
+      "description": "Where a player's name comes from (specs/roster-generator.md); fictional players, real name pools.",
+      "enum": [
+        "England",
+        "Spain",
+        "Brazil",
+        "France",
+        "Germany",
+        "Portugal",
+        "Austria",
+        "Netherlands",
+        "Italy"
+      ],
+      "title": "Nationality",
+      "type": "string"
+    },
+    "Position": {
+      "enum": [
+        "GK",
+        "CB",
+        "FB",
+        "DM",
+        "CM",
+        "AM",
+        "W",
+        "ST"
+      ],
+      "title": "Position",
+      "type": "string"
+    },
+    "Score": {
+      "additionalProperties": false,
+      "properties": {
+        "azc": {
+          "minimum": 0,
+          "title": "Azc",
+          "type": "integer"
+        },
+        "rdm": {
+          "minimum": 0,
+          "title": "Rdm",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "azc",
+        "rdm"
+      ],
+      "title": "Score",
+      "type": "object"
+    },
+    "Temperament": {
+      "enum": [
+        "calm",
+        "normal",
+        "hot-headed"
+      ],
+      "title": "Temperament",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "meta.json: everything the UI needs before playback.",
+  "properties": {
+    "match_id": {
+      "pattern": "^[a-z0-9_]+$",
+      "title": "Match Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "label": {
+      "title": "Label",
+      "type": "string"
+    },
+    "blurb": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Blurb"
+    },
+    "matchday": {
+      "maximum": 38,
+      "minimum": 1,
+      "title": "Matchday",
+      "type": "integer"
+    },
+    "seed": {
+      "title": "Seed",
+      "type": "integer"
+    },
+    "hero": {
+      "title": "Hero",
+      "type": "boolean"
+    },
+    "title_decider": {
+      "title": "Title Decider",
+      "type": "boolean"
+    },
+    "duration_s": {
+      "default": 5400,
+      "title": "Duration S",
+      "type": "integer"
+    },
+    "score": {
+      "$ref": "#/$defs/Score"
+    },
+    "default_player": {
+      "pattern": "^[a-z]{3}_\\d{2}$",
+      "title": "Default Player",
+      "type": "string"
+    },
+    "teams": {
+      "items": {
+        "$ref": "#/$defs/MatchTeam"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Teams",
+      "type": "array"
+    },
+    "activities": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Activities",
+      "type": "array"
+    },
+    "entity_order": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 24,
+      "minItems": 24,
+      "title": "Entity Order",
+      "type": "array"
+    }
+  },
+  "required": [
+    "match_id",
+    "label",
+    "matchday",
+    "seed",
+    "hero",
+    "title_decider",
+    "score",
+    "default_player",
+    "teams",
+    "activities",
+    "entity_order"
+  ],
+  "title": "Meta",
+  "type": "object"
+}
