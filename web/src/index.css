@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Tailwind only: no named CSS classes. Theme tokens and the one keyframe used by the banners. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@keyframes bannerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Tailwind v4's preflight gives buttons the default arrow cursor. Everything clickable shows the
+ * hand instead (element selectors, not named classes), and keyboard focus is always visible.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"],
+  [role="switch"],
+  [role="tab"],
+  a[href],
+  label:has(input:not(:disabled)),
+  input[type="checkbox"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid #a3e635;
+    outline-offset: 2px;
+  }
+}
+
+svg text {
+  font-family: var(--font-sans);
+}

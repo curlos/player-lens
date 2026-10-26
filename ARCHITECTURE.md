@@ -200,12 +200,12 @@ The rating engine sits beside this as a deterministic step; its output is shared
 **Added in review**
 
 - A star player is selected on load; there is never whole-match commentary.
-- Markers: players are large team-colored numbered circles, the ball is a small white dot, the referee is a small solid black diamond with a thin white outline; goalkeepers are neon yellow (Azure) and orange (Redmond).
+- Markers: players are large team-colored numbered circles, the ball is a small white dot, the referee is a small solid black diamond with a thin white outline; goalkeepers are gold (Azure) and pink (Redmond), distinct for colorblind viewers too.
 - Stat badges on the player card (ball per goal, boot per assist), silhouette portrait, one short animation per action type, a per-line "How this was made" link that expands the agent trace (no agent strip on screen).
 - Audio: Web Audio crowd loops (murmur always on, clip and volume chosen by event importance, Azure City is the home side) plus pre-generated commentary clips. A first click unlocks audio; mute button.
 - Start flow: no homepage. The first view is the Start match overlay (intro copy, Start button, Enter or Space also starts) that unlocks audio; a "Preparing match" state shows while data loads.
 - Score bar centered at the top of the pitch (AZC, score, RDM, clock). A tiny card icon appears under a team's abbreviation only after that team has a card; "10 men" after a red card.
-- Control bar auto-hides and is hidden by default: pause/play, 1x | 2x | 4x | 10x | 30x, a timeline with goal and card markers, an Activity labels toggle, and a gear that opens the View popover (Mute, Show ratings, Colorblind colors, Match info, Settings).
+- Control bar auto-hides and is hidden by default: pause/play, 1x | 2x | 4x | 10x | 30x, a timeline with goal and card markers, and a gear that opens the View popover (Mute, Show ratings, Activity labels, Colorblind colors, Match info, Settings).
 - Above-1x rule (2x to 30x): pitch, ratings and rating log keep running; commentary text and voice are off and no commentary chunks are fetched; crowd stays on. Only these five speeds exist: 1x, 2x, 4x, 10x, 30x (owner decision Oct 26).
 - Highlights row below the pitch: every goal, card and penalty as a clickable chip that jumps to a few seconds before the event.
 - Right sidebar tabs: Player and All ratings. All ratings is one vertical lineup pitch (Azure top 4-3-3, Redmond bottom 4-4-2, no names) with a rating pill on each dot.

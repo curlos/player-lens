@@ -4,7 +4,7 @@ A live 2D synthetic football match where you follow one player: a personal AI co
 
 All clubs and players are fictional (Atlas League: Azure City vs Redmond United).
 
-Status: Phase 1 (match data) built: roster, simulator, rating engine, three library matches. Agents, backend and frontend come next. Hackathon rules: see the official rules on the event site. See `PRODUCT.md`, `ARCHITECTURE.md`, `TASKS.md`, and `specs/`.
+Status: Phase 1 (match data) and Phase 2 (match viewer, `web/`) built. Commentary is a code-built template placeholder until the agent pipeline and backend (Phase 3) land. Hackathon rules: see the official rules on the event site. See `PRODUCT.md`, `ARCHITECTURE.md`, `TASKS.md`, and `specs/`.
 
 ## Quick start
 
@@ -39,3 +39,29 @@ Every match file is validated against its contract and the cross-file checks in 
 | Match files and validation | `sim/pipeline.py`, `sim/validate.py`, `sim/run.py`, `sim/library.py` |
 | Calibration | `scripts/calibrate.py`, `docs/validation-report.md` |
 | Dev match viewer (not the product UI) | `scripts/viewer.html`: run `python -m http.server 8000`, open http://localhost:8000/scripts/viewer.html |
+
+## Run the match viewer (web/)
+
+React + Vite + Tailwind + TypeScript. Needs Node 20+ (the dev machine uses `source ~/.nvm/nvm.sh && nvm use 22`). The dev server reads the match files straight from `data/matches/`; nothing is copied into `web/`.
+
+```bash
+cd web
+npm install
+npm run dev          # http://localhost:5173 (opens on the hero match with a Start overlay)
+npm test             # unit tests for the pure helpers (formatters, reason templates, lookups, template commentary)
+npm run build        # typecheck + production build into web/dist (served by FastAPI from Phase 4)
+npm run gen:types    # regenerate src/types/generated/ after contracts/*.schema.json change
+```
+
+Keyboard: Space plays or pauses (and starts from the overlay), Enter starts, left and right arrows seek 5 s.
+
+| Piece | Code |
+| --- | --- |
+| Data loading and lookups | `web/src/lib/match.ts` |
+| Playback clock | `web/src/lib/clock.ts`, `web/src/hooks/useClock.ts` |
+| Rating reason templates (EN/ES) | `web/src/lib/reasons.ts` |
+| Commentary placeholder (`getCommentaryChunk`, `getTrace`) | `web/src/lib/commentary.ts` |
+| Audio hooks (no-op until Phase 3) | `web/src/lib/audio.ts` |
+| Frontend knobs | `web/src/lib/config.ts` |
+| Components (pitch, panels, overlays) | `web/src/components/` |
+| Dev data serving (`/data`, `GET /matches`) | `web/scripts/match-data-plugin.ts` |

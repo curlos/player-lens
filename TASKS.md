@@ -29,7 +29,7 @@
 5. ~~**Rating engine:** deltas, repeat decay, soft cap, reason log, off-ball detection.~~ Done Oct 25; tuning closed Oct 26 (values accepted as is).
 6. **Agent pipeline:** agents on Microsoft Agent Framework, contract validation at each handoff, 1-minute commentary chunks with caching, Fact Guard, Voice Director.
 7. **Backend API:** FastAPI serving static match files and commentary chunks (no SSE).
-8. **Frontend:** Start match overlay, SVG pitch, spotlight, player card, commentary panel with "How this was made", All ratings lineup, auto-hiding control bar, View popover.
+8. ~~**Frontend:** Start match overlay, SVG pitch, spotlight, player card, commentary panel with "How this was made", All ratings lineup, auto-hiding control bar, View popover.~~ Done Oct 26 (Phase 2, `web/`, see `docs/phases/phase-2.md`); commentary is a template placeholder behind `getCommentaryChunk` until task 6/7, audio hooks are no-ops.
 9. **Personalization:** Casual/Analyst modes, English/Spanish.
 10. **Testing and evals:** simulator invariant tests, rating sum test, match-file validation, Fact Guard validator tests, backend endpoint tests with mocked LLM (no live calls), LLM fact-check evals. **Write alongside each piece and run after every change (approved Oct 25).**
 11. **Deployment:** Azure Container Apps plus saved-replay fallback.
