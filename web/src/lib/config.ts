@@ -9,6 +9,8 @@ export type Speed = (typeof SPEEDS)[number];
 
 /** Highlight chips and timeline clicks seek this many seconds before the event. */
 export const HIGHLIGHT_LEAD_S = 8;
+/** A rating log row seeks this many seconds before its change, to show the action that caused it (guess; owner, Oct 27). */
+export const RATING_LOG_LEAD_S = 4;
 /** Arrow keys seek by this many seconds. */
 export const ARROW_SEEK_S = 5;
 /** The control bar hides this long after the mouse stops over the pitch, then fades for 0.3 s (owner: 2 s or less in all, like a video player). */

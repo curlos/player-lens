@@ -18,8 +18,9 @@ export function PlayerCard({ match, player, final }: { match: MatchData; player:
 
   return (
     <section className="shrink-0 rounded-xl border border-white/5 bg-zinc-900/80 p-3">
-      <div className="flex items-center gap-3">
-        <AvatarIcon className="h-11 w-11 shrink-0" />
+      {/* top-aligned, so the Analyst stat line under the name doesn't push the avatar down */}
+      <div className="flex items-start gap-3">
+        <AvatarIcon className="mt-0.5 h-11 w-11 shrink-0" />
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold leading-tight text-zinc-50">{p.name}</h2>
           <div className="mt-0.5 flex items-center gap-1.5 text-sm text-zinc-400">

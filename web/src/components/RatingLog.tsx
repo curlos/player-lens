@@ -1,17 +1,20 @@
 /**
  * The rating reason log for the selected player, newest first. Text comes from the EN/ES
- * templates in lib/reasons.ts; silent entries (delta 0) are never shown.
+ * templates in lib/reasons.ts; silent entries (delta 0) are never shown. Clicking a row replays
+ * it: the clock seeks a few seconds before the change and keeps playing or paused.
  */
-import { useMatchSecond } from "../hooks/useClock";
+import { useClock, useMatchSecond } from "../hooks/useClock";
 import { useSettings } from "../hooks/useSettings";
 import { deltaColor } from "../lib/colors";
-import { deltaLabel, lastIndexAtOrBefore, minuteLabel } from "../lib/format";
+import { RATING_LOG_LEAD_S } from "../lib/config";
+import { deltaLabel, lastIndexAtOrBefore, minuteLabel, minuteSpoken } from "../lib/format";
 import { playerLabel, type MatchData } from "../lib/match";
 import { reasonText } from "../lib/reasons";
 
 const MAX_ROWS = 60;
 
 export function RatingLog({ match, player }: { match: MatchData; player: string }) {
+  const clock = useClock();
   const s = useMatchSecond();
   const { lang, colorblind } = useSettings();
   const log = match.ratingLog.get(player) ?? [];
@@ -29,18 +32,31 @@ export function RatingLog({ match, player }: { match: MatchData; player: string 
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto" aria-label="Rating changes, newest first" lang={lang}>
         {rows.length === 0 && <li className="py-2 text-sm text-zinc-500">No rating changes yet.</li>}
-        {rows.map((r) => (
-          <li key={r.id} className="grid grid-cols-[3.25rem_3.25rem_1fr] items-start border-b border-white/5 py-1 text-sm">
-            <span className="tabular-nums text-zinc-400">{minuteLabel(r.t)}</span>
-            <span className="font-semibold tabular-nums" style={{ color: deltaColor(r.delta, colorblind) }}>
-              {deltaLabel(r.delta)}
-            </span>
-            <span className="text-zinc-200">
-              {reasonText(r.reason_code, r.values, lang, (id) => playerLabel(match, id))}
-              {r.off_ball && <span className="ml-1.5 rounded bg-lime-400/15 px-1 py-px text-xs font-medium text-lime-300">off-ball</span>}
-            </span>
-          </li>
-        ))}
+        {rows.map((r) => {
+          const reason = reasonText(r.reason_code, r.values, lang, (id) => playerLabel(match, id));
+          return (
+            <li key={r.id} className="border-b border-white/5">
+              {/* the whole row replays the moment; the player stays selected */}
+              <button
+                type="button"
+                onClick={() => clock.seek(Math.max(0, r.t - RATING_LOG_LEAD_S))}
+                title={`Replay from ${RATING_LOG_LEAD_S} seconds before`}
+                // the label replaces the row's text for screen readers, so it carries the off-ball tag too
+                aria-label={`${minuteSpoken(r.t)}, ${deltaLabel(r.delta)}, ${reason}${r.off_ball ? ", off-ball" : ""}. Replay from ${RATING_LOG_LEAD_S} seconds before.`}
+                className="grid w-full grid-cols-[3.25rem_3.25rem_1fr] items-start rounded py-1 text-left text-sm hover:bg-white/5"
+              >
+                <span className="tabular-nums text-zinc-400">{minuteLabel(r.t)}</span>
+                <span className="font-semibold tabular-nums" style={{ color: deltaColor(r.delta, colorblind) }}>
+                  {deltaLabel(r.delta)}
+                </span>
+                <span className="text-zinc-200">
+                  {reason}
+                  {r.off_ball && <span className="ml-1.5 rounded bg-lime-400/15 px-1 py-px text-xs font-medium text-lime-300">off-ball</span>}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
