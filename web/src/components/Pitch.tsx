@@ -34,7 +34,7 @@ import {
 } from "../lib/config";
 import { ratingLabel } from "../lib/format";
 import { footballPatches } from "../lib/football";
-import { activityAt, nearestInDirection, positionAt, ratingAt, type MatchData, type Track } from "../lib/match";
+import { activityAt, ballAt, nearestInDirection, positionAt, ratingAt, type MatchData, type Track } from "../lib/match";
 import { PitchMarkings } from "./PitchMarkings";
 import { PitchOverlays } from "./PitchOverlays";
 
@@ -78,8 +78,23 @@ function movementArrow(track: Track, x: number, y: number, t: number, seconds: n
   };
 }
 
-/** Rough text width in meters for the tag font (measured once in the browser would be nicer; good enough). */
+/** Rough text width in meters, used only until the browser has measured the real text. */
 const textWidth = (s: string, font = TAG_FONT) => s.length * font * 0.56;
+/** Space between a tag's text and its rating pill, in meters (same on the name tag and the hover tag). */
+const TAG_GAP = 0.7;
+
+/**
+ * Width of an SVG text element as rendered, measured after each change of `text` (letter-count
+ * guesses left wide names cramped against the pill and narrow ones with a gap).
+ */
+function useTextWidth(ref: { current: SVGTextElement | null }, text: string, fallback: number): number {
+  const [measured, setMeasured] = useState<{ text: string; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && text) setMeasured({ text, w: el.getComputedTextLength() });
+  }, [ref, text]);
+  return measured?.text === text ? measured.w : fallback;
+}
 
 export function Pitch({ match, dimmed }: Props) {
   const clock = useClock();
@@ -141,6 +156,8 @@ export function Pitch({ match, dimmed }: Props) {
   const nameTagRef = useRef<SVGGElement>(null);
   const trailRefs = useRef<(SVGLineElement | null)[]>([]);
   const hoverRef = useRef<SVGGElement>(null);
+  const nameTextRef = useRef<SVGTextElement>(null);
+  const hovTextRef = useRef<SVGTextElement>(null);
   const kbRingRef = useRef<SVGCircleElement>(null);
   const selArrowRef = useRef<SVGPathElement>(null);
   const hoverRatingRect = useRef<SVGRectElement>(null);
@@ -181,7 +198,6 @@ export function Pitch({ match, dimmed }: Props) {
   }, [selected, clock]);
 
   useLayoutEffect(() => {
-    const ballTrack = match.tracks.get("ball")!;
     const refTrack = match.tracks.get("ref")!;
     const selTrack = match.tracks.get(selected);
     let lastHoverRating = "";
@@ -275,7 +291,7 @@ export function Pitch({ match, dimmed }: Props) {
       }
 
       // the ball at its true position (interpolated like every entity)
-      const [bx, by] = positionAt(ballTrack, t, match.seconds);
+      const [bx, by] = ballAt(match, t);
       ballRef.current?.setAttribute("transform", `translate(${bx.toFixed(2)} ${by.toFixed(2)})`);
 
       const [rx, ry] = positionAt(refTrack, t, match.seconds);
@@ -385,12 +401,12 @@ export function Pitch({ match, dimmed }: Props) {
   const sel = match.players.get(selected);
   const selName = sel?.name ?? "";
   const selNum = sel ? `#${sel.number}` : "";
-  const nameW = textWidth(`${selName} ${selNum}`);
-  const tagW = nameW + 5.6;
+  const nameW = useTextWidth(nameTextRef, `${selName} ${selNum}`, textWidth(`${selName} ${selNum}`));
+  const tagW = 1 + nameW + TAG_GAP + 3 + 0.7; // left pad, text, gap, pill, right pad
 
   const hov = tagFor ? match.players.get(tagFor) : undefined;
   const hovText = hov ? `#${hov.number} ${hov.name} · ${hov.slot} · OVR ${hov.ovr}` : "";
-  const hovW = textWidth(hovText, 1.25) + 6.2;
+  const hovW = 0.9 + useTextWidth(hovTextRef, hovText, textWidth(hovText, 1.25)) + TAG_GAP + 2.8 + 0.8;
 
   return (
     <svg
@@ -432,7 +448,7 @@ export function Pitch({ match, dimmed }: Props) {
         <g transform={`translate(0 ${-DOT_R - 3.2})`}>
           <rect x={-tagW / 2} y={-1.4} width={tagW} height={2.8} rx={1.1} fill="rgba(24,24,27,0.82)" />
           <path d="M -0.7 1.4 L 0 2.2 L 0.7 1.4 Z" fill="rgba(24,24,27,0.82)" />
-          <text x={-tagW / 2 + 1} dominantBaseline="central" fontSize={TAG_FONT} fill="#f4f4f5" fontWeight={500}>
+          <text ref={nameTextRef} x={-tagW / 2 + 1} dominantBaseline="central" fontSize={TAG_FONT} fill="#f4f4f5" fontWeight={500}>
             {selName} <tspan fill={COLORS.lime} fontWeight={700}>{selNum}</tspan>
           </text>
           <rect ref={tagRatingRect} x={tagW / 2 - 3.7} y={-0.9} width={3} height={1.8} rx={0.5} />
@@ -552,7 +568,7 @@ export function Pitch({ match, dimmed }: Props) {
         <g ref={hoverRef} pointerEvents="none" aria-hidden="true">
           <g transform={`translate(0 ${-DOT_R - 2.6})`}>
             <rect x={-hovW / 2} y={-1.25} width={hovW} height={2.5} rx={1} fill="rgba(24,24,27,0.92)" />
-            <text x={-hovW / 2 + 0.9} dominantBaseline="central" fontSize={1.25} fill="#f4f4f5">
+            <text ref={hovTextRef} x={-hovW / 2 + 0.9} dominantBaseline="central" fontSize={1.25} fill="#f4f4f5">
               {hovText}
             </text>
             <rect ref={hoverRatingRect} x={hovW / 2 - 3.6} y={-0.85} width={2.8} height={1.7} rx={0.45} />

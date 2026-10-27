@@ -27,11 +27,24 @@ export const SpeakerIcon = ({ off, ...p }: P & { off?: boolean }) => (
     {off ? <path d="m23 9-6 6M17 9l6 6" /> : <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />}
   </svg>
 );
+/** Four corner brackets: pointing out to enter fullscreen, pointing in (`exit`) to leave it. */
+export const FullscreenIcon = ({ exit, ...p }: P & { exit?: boolean }) => (
+  <svg {...base} {...p}>
+    <path d={exit ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"} />
+  </svg>
+);
 export const BallIcon = (p: P) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" {...p}>
     <circle cx="12" cy="12" r="10" fill="#fff" stroke="#18181b" strokeWidth="1.5" />
     <path d="m12 7 4 3-1.5 4.5h-5L8 10z" fill="#18181b" />
     <path d="M12 7V2.5M16 10l4.5-1.5M14.5 14.5l3 3.5M9.5 14.5l-3 3.5M8 10 3.5 8.5" stroke="#18181b" strokeWidth="1.2" />
+  </svg>
+);
+/** Penalty area with the spot: the box a penalty is given in, so it reads differently from the goal ball. */
+export const PenaltyIcon = (p: P) => (
+  <svg {...base} strokeWidth={1.8} {...p}>
+    <path d="M3 5h18v14H3zM8 5v6h8V5" />
+    <circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none" />
   </svg>
 );
 export const BootIcon = (p: P) => (

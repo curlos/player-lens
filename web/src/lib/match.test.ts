@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { minuteLabel } from "./format";
 import { STANDINGS } from "./config";
-import { goalsAndAssistsAt, nearestInDirection, positionAt, ratingAt, scoreAt, teamCardsAt, titleWinner } from "./match";
+import { ballAt, goalRevealT, goalsAndAssistsAt, nearestInDirection, positionAt, ratingAt, scoreAt, shownAt, shownScoreAt, teamCardsAt, titleWinner } from "./match";
 import { buildMatch } from "./match";
 import { loadFixture } from "./testData";
 
@@ -119,5 +119,47 @@ describe("keyboard navigation between players", () => {
       expect((x - ox) * dx + (y - oy) * dy).toBeGreaterThan(0); // always ahead, never behind
     }
     expect(nearestInDirection(m, "azc_09", ["azc_09"], [1, 0], t)).toBeNull();
+  });
+});
+
+describe("shot flight", () => {
+  const goal = match.goals.find((g) => g.t === 2327)!; // 39' Lima: 8.2 m at 79 km/h
+
+  it("flies the shot's own line, then holds in the net, instead of gliding for a second", () => {
+    const f = match.shotFlights.find((s) => s.t === 2327)!;
+    expect(f.t1 - f.t).toBeGreaterThan(0.3);
+    expect(f.t1 - f.t).toBeLessThan(0.5);
+    expect(ballAt(match, 2327)).toEqual(f.from);
+    expect(ballAt(match, f.t1)).toEqual(f.to);
+    expect(ballAt(match, 2327.7)[0]).toBeCloseTo(105, 1);
+    expect(ballAt(match, 2328)[0]).toBeCloseTo(105, 1);
+  });
+
+  it("never leaves the pitch and never jumps between 60 fps frames", () => {
+    for (const f of match.shotFlights) {
+      let prev = ballAt(match, Math.floor(f.t) - 0.5);
+      for (let t = Math.floor(f.t) - 0.5; t <= Math.floor(f.t) + 1.5; t += 1 / 60) {
+        const [x, y] = ballAt(match, t);
+        expect(x).toBeGreaterThanOrEqual(-0.5);
+        expect(x).toBeLessThanOrEqual(105.5);
+        expect(y).toBeGreaterThanOrEqual(-0.5);
+        expect(y).toBeLessThanOrEqual(68.5);
+        // even a 130 km/h shot moves 0.6 m a frame; a bigger step would be a jump
+        expect(Math.hypot(x - prev[0], y - prev[1])).toBeLessThan(1.5);
+        prev = [x, y];
+      }
+    }
+  });
+
+  it("reveals a goal in the score only once the ball has landed", () => {
+    const reveal = goalRevealT(match, goal);
+    expect(reveal).toBeGreaterThan(goal.t);
+    expect(reveal).toBeLessThan(goal.t + 1);
+    expect(shownScoreAt(match, goal.t)).toEqual(scoreAt(match, goal.t - 1));
+    expect(shownScoreAt(match, reveal)).toEqual(goal.score);
+    expect(shownScoreAt(match, 5400)).toEqual(match.meta.score);
+    // everything in the goal's second waits for the same landing time; other seconds are unchanged
+    expect(shownAt(match, goal.t)).toBe(reveal);
+    expect(shownAt(match, goal.t + 1)).toBe(goal.t + 1);
   });
 });

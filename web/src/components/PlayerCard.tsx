@@ -31,8 +31,11 @@ export function PlayerCard({ match, player, final }: { match: MatchData; player:
             {sentOff && t >= sentOff.cardT && <span className="rounded bg-red-500/20 px-1.5 py-px text-xs font-semibold text-red-300">Sent off</span>}
           </div>
           {mode === "analyst" && (
-            <p className="mt-0.5 text-xs tabular-nums text-zinc-400">
-              xG {xgAt(match, player, t).toFixed(2)} · Distance {distanceKmAt(match, player, t).toFixed(1)} km
+            <p
+              className="mt-0.5 text-xs tabular-nums text-zinc-400"
+              title="Expected goals (xG): the combined chance of all this player's shots so far; 1.00 would be one goal's worth of chances. Distance covered: how far this player has run so far."
+            >
+              Expected goals (xG) {xgAt(match, player, t).toFixed(2)} · Distance covered {distanceKmAt(match, player, t).toFixed(1)} km
             </p>
           )}
         </div>

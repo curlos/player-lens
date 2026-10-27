@@ -15,6 +15,7 @@ import type {
   RatingsFile,
   TeamId,
 } from "../types";
+import { SHOT_FLIGHT_MAX_S } from "./config";
 import { lastIndexAtOrBefore } from "./format";
 
 export interface PlayerInfo extends MatchPlayer {
@@ -42,6 +43,15 @@ export interface Highlight {
   event: MatchEvent;
 }
 
+/** One shot's ball flight: from the kick (t) to landing (t1) along the event's from -> to line. */
+export interface ShotFlight {
+  t: number;
+  t1: number;
+  player: string;
+  from: [number, number];
+  to: [number, number];
+}
+
 export interface MatchData {
   id: string;
   meta: Meta;
@@ -67,6 +77,13 @@ export interface MatchData {
   sentOff: Map<string, { cardT: number; stopT: number }>;
   /** Per player: cumulative distance in meters at the end of each second. */
   distance: Map<string, Float32Array>;
+  /** Shot flights sorted by kick time. */
+  shotFlights: ShotFlight[];
+  /**
+   * When a moment at this whole second is shown to the viewer: a goal's second maps to when its
+   * ball lands; every other second is shown as is. Built once, so per-frame reads are O(1).
+   */
+  revealAt: Map<number, number>;
 }
 
 /** GET /matches: the library list (Phase 2: answered by the Vite dev plugin). */
@@ -139,6 +156,13 @@ export function buildMatch(meta: Meta, eventsFile: EventsFile, ratingsFile: Rati
     if (track) distance.set(id, cumulativeDistance(track.xy, positions.seconds));
   }
 
+  const shotFlights = buildShotFlights(events);
+  const revealAt = new Map<number, number>();
+  for (const g of goals) {
+    const f = shotFlights.find((s) => s.t === g.t && s.player === g.player);
+    if (f) revealAt.set(g.t, f.t1);
+  }
+
   return {
     id: meta.match_id,
     meta,
@@ -157,7 +181,60 @@ export function buildMatch(meta: Meta, eventsFile: EventsFile, ratingsFile: Rati
     highlights,
     sentOff,
     distance,
+    shotFlights,
+    revealAt,
   };
+}
+
+/**
+ * The ball's flight for every shot with a start, a target and a speed: distance / speed, capped
+ * (SHOT_FLIGHT_MAX_S). Presentation only: every number comes from the shot event.
+ */
+export function buildShotFlights(events: MatchEvent[]): ShotFlight[] {
+  const out: ShotFlight[] = [];
+  for (const e of events) {
+    if (e.type !== "shot" || !e.from || !e.to || !e.speed_kmh || e.speed_kmh <= 0) continue;
+    const dur = Math.min(Math.hypot(e.to.x - e.from.x, e.to.y - e.from.y) / (e.speed_kmh / 3.6), SHOT_FLIGHT_MAX_S);
+    out.push({ t: e.t, t1: e.t + dur, player: e.player, from: [e.from.x, e.from.y], to: [e.to.x, e.to.y] });
+  }
+  return out;
+}
+
+/**
+ * The ball's position at t. Normally the interpolated 1 Hz track; within the second after a shot
+ * it flies the shot's line, holds at the target, then eases into the next track sample (a no-op
+ * for a goal, where the target is that sample), so it never jumps.
+ */
+export function ballAt(match: MatchData, t: number): [number, number] {
+  const track = match.tracks.get("ball")!;
+  const i = lastIndexAtOrBefore(match.shotFlights, t);
+  if (i >= 0) {
+    const f = match.shotFlights[i];
+    const nextSample = Math.floor(f.t) + 1;
+    if (t < f.t1) {
+      const u = (t - f.t) / (f.t1 - f.t);
+      return [f.from[0] + (f.to[0] - f.from[0]) * u, f.from[1] + (f.to[1] - f.from[1]) * u];
+    }
+    if (t < nextSample) {
+      const [nx, ny] = positionAt(track, nextSample, match.seconds);
+      const w = (t - f.t1) / (nextSample - f.t1);
+      return [f.to[0] + (nx - f.to[0]) * w, f.to[1] + (ny - f.to[1]) * w];
+    }
+  }
+  return positionAt(track, t, match.seconds);
+}
+
+/** When a goal is shown (banner, score bar): when the ball lands, or the goal's time when there is no flight. */
+export function goalRevealT(match: MatchData, goal: MatchEvent): number {
+  return match.revealAt.get(goal.t) ?? goal.t;
+}
+
+/**
+ * When something that happened at time t is shown: anything in a goal's second (the goal chip,
+ * the scorer's and keeper's rating pops, the GOAL commentary line) waits for the ball to land.
+ */
+export function shownAt(match: MatchData, t: number): number {
+  return match.revealAt.get(t) ?? t;
 }
 
 /**
@@ -227,6 +304,13 @@ export function ratingAt(match: MatchData, playerId: string, t: number): number 
 export function scoreAt(match: MatchData, t: number): { azc: number; rdm: number } {
   const i = lastIndexAtOrBefore(match.goals, t);
   return i < 0 ? { azc: 0, rdm: 0 } : match.goals[i].score;
+}
+
+/** The score as the viewer sees it: a goal counts once the ball has landed (goalRevealT). */
+export function shownScoreAt(match: MatchData, t: number): { azc: number; rdm: number } {
+  let score = { azc: 0, rdm: 0 };
+  for (const g of match.goals) if (goalRevealT(match, g) <= t) score = g.score;
+  return score;
 }
 
 /** Cards shown by t for one team: whether it has a yellow, and how many reds. */

@@ -13,10 +13,10 @@
 | Playback clock `{t, playing, rate}` + hooks | `web/src/lib/clock.ts`, `web/src/hooks/useClock.ts` |
 | EN/ES reason templates for all 34 codes | `web/src/lib/reasons.ts` |
 | Commentary placeholder `getCommentaryChunk` + `getTrace` | `web/src/lib/commentary.ts` |
-| Audio hooks (no-ops, no audio files) | `web/src/lib/audio.ts` |
+| Crowd audio: cue rules (pure, tested) and Web Audio playback; CC0 clips with credits | `web/src/lib/crowd.ts`, `web/src/lib/audio.ts`, `web/public/audio/crowd/` |
 | Every frontend knob (speeds, spotlight, visuals, cadence, standings) | `web/src/lib/config.ts` |
 | Components | `web/src/components/` (Pitch, PitchOverlays, PitchMarkings, ScoreBar, Banners, PlaybackBar, ViewPopover, HighlightsRow, Sidebar, PlayerCard, RatingChart, RatingLog, CommentaryPanel, AllRatings, StartOverlay, FullTimeCard, MatchPicker) |
-| Tests (28, Vitest, pure helpers only; run on the real hero files) | `web/src/lib/*.test.ts` |
+| Tests (40, Vitest, pure helpers only; run on the real hero files) | `web/src/lib/*.test.ts` |
 
 ## Key facts
 
@@ -26,13 +26,13 @@
 - Spotlight: about 7 match seconds after a big moment (importance 0.8 or more) of the selected player, and 2.5 s after a click (owner, Oct 26: the dim is instant, then eases out: after a click it holds 1.5 s and fades back over 1 s; after a big moment it fades over the last 1.5 match seconds); otherwise nobody is dimmed.
 - Commentary is off above 1x (no `getCommentaryChunk` calls), with "Commentary pauses at {rate}x speed".
 - Layout: one row (pitch + sidebar) from `lg` (1024 px); below that one column. The pitch box sizes from container-query units: below `lg` its container measures width only (a `size` container with no definite height resolves to 0 and hides the pitch). The playback bar wraps by its own width (`@container`, `@2xl`), not the screen's, because the pitch can be narrow on a wide screen (phone landscape). Checked at 390x844, 844x390, 820x1180, 1280x800 and a 3432 px wide display.
-- Owner changes after the first build (all in `docs/decisions.md` and `specs/frontend.md`): 14 px / 12 px type tiers and a 360/400 px sidebar; Mexican-Spanish wording; gold and pink goalkeepers; football-patterned ball at its true position; movement arrows (small triangle on the outline; lime for the followed player; white for the 5 nearest within 25 m; "All movement arrows" setting, off by default); Activity labels moved into the View popover and off for the followed player too; lime progress bar and switches; square-cornered pitch with 16 px page padding; team-coloured labels on All ratings; keyboard play (the pitch is one tab stop, arrows move between nearby players); screen-reader announcements for goals, cards and penalties.
+- Owner changes after the first build (all in `docs/decisions.md` and `specs/frontend.md`): 14 px / 12 px type tiers and a 360/400 px sidebar; Mexican-Spanish wording; gold and pink goalkeepers; football-patterned ball at its true position; movement arrows (small triangle on the outline; lime for the followed player; white for the 5 nearest within 25 m; "All movement arrows" setting, off by default); Activity labels moved into the View popover and off for the followed player too; lime progress bar and switches; square-cornered pitch with 16 px page padding; team-coloured labels on All ratings; crowd audio (wordless CC0 murmur and reactions, real referee whistle; see Spec: Match Rules); grey thin scrollbars; shot flight (the ball flies a shot in ~0.4 s and the goal banner and score wait for it); football and penalty icons on the highlight chips; keyboard play (the pitch is one tab stop, arrows move between nearby players); screen-reader announcements for goals, cards and penalties.
 - A dev-only `window.__playerLens` (`clock`, `select`) puts the app in any state for browser checks: `__playerLens.clock.seek(2330)`. Stripped from production builds.
 
 ## Rules for later phases
 
 - **Phase 3 swaps two function bodies, not the callers:** `getCommentaryChunk(match, player, mode, lang, chunk)` becomes `GET /commentary?match&player&mode&lang&chunk` (handle the 202 `preparing` answer by returning nothing yet and retrying; the panel already shows "Preparing commentary" while a chunk is missing), and `getTrace(lineId)` becomes `GET /agents/trace?line=`. The panel already caches by (match, player, mode, lang, chunk) and fetches the playhead chunk plus the next.
-- Phase 3 also fills `web/src/lib/audio.ts` (Web Audio crowd loops, clip player) behind the same functions, and replaces the full-time recap template in `FullTimeCard.tsx` with `GET /recap`.
+- Phase 3 also fills the commentary clip player in `web/src/lib/audio.ts` (`playClip`, `stopClip`; the crowd is already built: duck it under the voice with the `CROWD.duck*` knobs, see Spec: Match Rules), and replaces the full-time recap template in `FullTimeCard.tsx` with `GET /recap`.
 - FastAPI must serve the same URLs the dev plugin does: `/data/matches/<id>/*.json` and `GET /matches` (shape in `specs/agents-backend.md`), and `web/dist` for the app (Phase 4).
 - After any change to `contracts/`, run `npm run gen:types` in `web/`.
 - Don't move dot positions anywhere but the frame listener in `Pitch.tsx`, and don't compute numbers the files already have.
@@ -47,7 +47,7 @@
 
 ## Not done (with reason)
 
-- Spoken commentary, crowd audio: no audio files or Speech output exist yet (Phase 3); hooks and the Mute toggle are wired.
+- Spoken commentary: no Speech output exists yet (Phase 3); `playClip` / `stopClip` and the Mute toggle are wired. The crowd is built.
 - Agent trace steps other than `Template`, the Fact Guard badge and diff: they need real traces from Phase 3; the trace view renders any step list from the contract.
 - "Preparing commentary" for a slow network and the 10 s late-line drop are implemented but only exercised with the instant local placeholder.
 - Minimum-distance nudge between overlapping dots: still an open question in the spec; not built.
@@ -61,7 +61,7 @@ cd web
 source ~/.nvm/nvm.sh && nvm use 22   # Node is not on Claude Code's default PATH
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 28 helper tests
+npm test           # 40 helper tests
 npm run build      # tsc + vite build into web/dist
 ```
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildLines, getCommentaryChunk, getTrace } from "./commentary";
 import { LINE_MAX_SILENCE_S, LINE_MIN_GAP_S } from "./config";
+import { shownAt } from "./match";
 import { loadFixture } from "./testData";
 
 const match = loadFixture();
@@ -35,7 +36,7 @@ describe("template commentary placeholder", () => {
   });
 
   it("calls the star's goals", () => {
-    expect(lines.some((l) => l.type === "goal" && l.t === 2327 && l.text.startsWith("GOAL!"))).toBe(true);
+    expect(lines.some((l) => l.type === "goal" && l.t === shownAt(match, 2327) && l.t > 2327 && l.text.startsWith("GOAL!"))).toBe(true);
   });
 
   it("slices 1-minute chunks and returns a single Template trace step", async () => {

@@ -11,6 +11,8 @@ export type Speed = (typeof SPEEDS)[number];
 export const HIGHLIGHT_LEAD_S = 8;
 /** Arrow keys seek by this many seconds. */
 export const ARROW_SEEK_S = 5;
+/** The control bar hides this long after the mouse stops over the pitch, then fades for 0.3 s (owner: 2 s or less in all, like a video player). */
+export const CONTROLS_HIDE_MS = 1500;
 
 /** Spotlight dims every other dot and the referee to this opacity. */
 export const SPOTLIGHT_DIM = 0.35;
@@ -51,6 +53,13 @@ export const REF_HALF = 0.9;
 export const ARROW_NEAREST = 5;
 export const ARROW_NEAR_MAX_DIST = 25; // m
 export const MOTION_MIN_SPEED = 1.2; // m/s
+
+/**
+ * Shot flight (owner, Oct 26): positions.json has one ball sample a second, so a shot would glide
+ * from the kick to the target over a whole second. Instead the ball flies the shot's own
+ * `from` -> `to` line at its `speed_kmh` (about 0.4 s), and the GOAL banner and score wait until it
+ * lands. A flight is capped just under one second so the ball is back on its 1 Hz track at the next sample. */
+export const SHOT_FLIGHT_MAX_S = 0.9;
 
 /** Selected player's trail length in match seconds (guess). */
 export const TRAIL_S = 5;
@@ -101,4 +110,79 @@ export const COLORS = {
   rdm: "#E5484D",
   pitch: "#2E5A30",
   lime: "#A3E635",
+} as const;
+
+/**
+ * Crowd audio (owner, Oct 26). Azure City is the home crowd. Every gain and timing here is a
+ * guess, tuned by ear; volumes are 0 to 1 before the master gain.
+ * Clips: wordless CC0 recordings from Freesound (see web/public/audio/crowd/CREDITS.md), with
+ * the murmur, goal roar, near-miss and cheer taken from a real football stadium.
+ * `offset` skips to where the sound rises, so its loud part lands about 0.3 to 0.8 s after the
+ * moment (measured from each clip's loudness curve); `play` is how long a reaction lasts before it
+ * fades out; `norm` evens out the recordings' levels (measured, so the gains below compare).
+ */
+export const CROWD_CLIPS = {
+  // the four "stadium-" clips are trimmed from one real football stadium recording; each file starts where its sound rises
+  murmur: { file: "stadium-murmur.m4a", offset: 0, play: 0, norm: 2.36 }, // 64 s, tail blended into head so it loops seamlessly
+  roar: { file: "stadium-goal.m4a", offset: 0, play: 12, norm: 0.9 }, // full roar 0.25 s in; the loudest sound in the match (owner)
+  cheer: { file: "stadium-cheer.m4a", offset: 0, play: 5, norm: 0.71 },
+  ooh: { file: "stadium-chance-missed.m4a", offset: 0, play: 4.5, norm: 0.78 }, // swells to its peak about 0.8 s in
+  conceded: { file: "stadium-conceded.m4a", offset: 1, play: 8, norm: 0.6 }, // the loudest "OHHH" take; skipping 1 s starts it already loud, peak 1.7 s in
+  gasp: { file: "gsc-gasp-voiced.mp3", offset: 0.4, play: 2, norm: 1.25 },
+  boo: { file: "gsc-booing.mp3", offset: 0.8, play: 4, norm: 1 },
+  whistle: { file: "rosa-ref-whistle.mp3", offset: 0, play: 0.54, norm: 1 }, // one real blast, about 2.4 kHz
+} as const;
+export type CrowdClip = keyof typeof CROWD_CLIPS;
+
+export const CROWD = {
+  /** Master volume for the whole crowd (commentary voice sits above it from Phase 3). */
+  master: 0.7,
+  /**
+   * Phase 3 ducking (not used yet): while a commentary clip plays, the crowd drops to `duck` of its
+   * volume (`duckGoal` under a goal roar, so it still comes through), in `duckAttackS`, and comes
+   * back over `duckReleaseS` after the line ends.
+   */
+  duck: 0.35,
+  duckGoal: 0.6,
+  duckAttackS: 0.2,
+  duckReleaseS: 1,
+  /** Murmur: always on; swells when the ball is near a goal, more for Azure's attacks. */
+  murmurBase: 0.35,
+  murmurHomeAttack: 0.35, // extra when the ball is deep in Redmond's half (x 70 -> 95 m)
+  murmurAwayAttack: 0.15, // extra (nerves) when Redmond attack (x 35 -> 10 m)
+  goalHome: 1,
+  /**
+   * Redmond goal: an anguished stadium "OHHH" at `goalAway`, then the stunned home crowd stays
+   * quiet (murmur at `goalAwayHush` of its level for `goalAwayHushS`, easing back over the last
+   * `goalAwayRecoverS`).
+   */
+  goalAway: 1,
+  goalAwayHush: 0.35,
+  goalAwayHushS: 10,
+  goalAwayRecoverS: 3,
+  /** Azure shots that miss: gain = shotHomeBase + importance, capped at shotHomeMax. */
+  shotHomeBase: 0.25,
+  shotHomeMax: 0.8,
+  /** Redmond shots draw a nervous gasp only from this importance up. */
+  shotAwayMinImportance: 0.4,
+  shotAway: 0.35,
+  penalty: 0.9,
+  yellow: 0.6,
+  red: 1,
+  /** A red card's boos or cheers last longer than a yellow's. */
+  redPlay: 7,
+  /** Loud enough to cut through the murmur; the crowd's boos or cheers start `afterWhistleS` later. */
+  whistle: 0.6,
+  afterWhistleS: 0.4,
+  /** Full time: three blasts this far apart (seconds). */
+  finalWhistleGap: 0.45,
+  /** At this speed and above only goals and red cards draw a reaction (else constant noise). */
+  fastRate: 10,
+  /**
+   * Above 1x a reaction lasts its 1x length divided by the speed (the clip keeps its normal pitch,
+   * only its length is cut), but never less than `minFastPlayS`, so it still reads as a roar or boo.
+   */
+  minFastPlayS: 2.5,
+  /** Reaction clips fade out over this many seconds (on seek, and at the end of `play`). */
+  fadeS: 0.6,
 } as const;

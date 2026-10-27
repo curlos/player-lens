@@ -1,4 +1,4 @@
-/** Gear popover: Mute, Show ratings, Colorblind colors, Match info (with the match picker) and Settings. */
+/** Gear popover: Show ratings, Colorblind colors, Match info (with the match picker) and Settings. */
 import { useEffect, useRef, useState } from "react";
 import { useSettings } from "../hooks/useSettings";
 import type { MatchData } from "../lib/match";
@@ -39,7 +39,6 @@ export function ViewPopover({ match, matches, onPickMatch }: Props) {
       {page === "main" && (
         <div className="space-y-0.5">
           {[
-            ["Mute", s.muted, s.setMuted],
             ["Show ratings", s.showRatings, s.setShowRatings],
             ["Activity labels", s.activityLabels, s.setActivityLabels],
             ["Colorblind colors", s.colorblind, s.setColorblind],

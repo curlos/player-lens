@@ -2,7 +2,8 @@
  * Start match overlay (PRODUCT, "Intro copy"). No homepage: the site opens on the match with the
  * star selected. Start (or Enter / Space) begins playback and unlocks audio.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { STANDINGS } from "../lib/config";
 import type { MatchData } from "../lib/match";
 import type { MatchSummary } from "../types";
@@ -17,15 +18,33 @@ interface Props {
   onPickMatch: (id: string) => void;
 }
 
+/** Tailwind's `lg`: from here the pitch is tall enough to hold the card. */
+const WIDE = "(min-width: 1024px)";
+
+function useWide(): boolean {
+  const [wide, setWide] = useState(() => window.matchMedia(WIDE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE);
+    const onChange = () => setWide(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+}
+
 export function StartOverlay({ match, matchId, matches, error, onStart, onPickMatch }: Props) {
+  const wide = useWide();
   const meta = match?.meta;
   const titleDecider = meta?.title_decider ?? true;
   const startButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (match) startButton.current?.focus();
   }, [match]);
-  return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-zinc-950/55 p-4 backdrop-blur-[1px]">
+  const overlay = (
+    // Over the pitch from lg up; below lg the pitch is far shorter than the card, so it covers the
+    // whole screen like a mobile modal. Either way it scrolls rather than spilling past the top.
+    <div className={`inset-0 z-30 overflow-y-auto backdrop-blur-[1px] ${wide ? "absolute bg-zinc-950/55" : "fixed bg-zinc-950/80"}`}>
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
         className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900/95 p-6 text-zinc-200 shadow-2xl"
         role="dialog"
@@ -89,6 +108,9 @@ export function StartOverlay({ match, matchId, matches, error, onStart, onPickMa
           <MatchPicker matches={matches} current={matchId} onPick={onPickMatch} compact />
         </div>
       </div>
+      </div>
     </div>
   );
+  // below lg, rendered into <body>: the pitch's container query would otherwise pin `fixed` to the pitch box
+  return wide ? overlay : createPortal(overlay, document.body);
 }

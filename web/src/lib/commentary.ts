@@ -12,7 +12,7 @@
  */
 import type { CommentaryChunk, CommentaryLine, Lang, MatchEvent, Mode, RatingEntry, Trace } from "../types";
 import { CHUNK_S, LINE_MAX_SILENCE_S, LINE_MIN_GAP_S, MAX_CHUNK, SPOTLIGHT_MIN_IMPORTANCE } from "./config";
-import { activityAt, distanceKmAt, playerLabel, ratingAt, scoreAt, type MatchData } from "./match";
+import { activityAt, distanceKmAt, playerLabel, ratingAt, scoreAt, shownAt, type MatchData } from "./match";
 import { reasonText } from "./reasons";
 import { deltaLabel, minuteLabel, ratingLabel } from "./format";
 
@@ -182,7 +182,8 @@ export function buildLines(match: MatchData, player: string, mode: Mode, lang: L
     const text = momentText(match, e, player, mode, lang);
     if (!text) continue;
     const involved = e.player === player || e.other === player;
-    candidates.push({ t: e.t, type: e.type, importance: involved ? 1 : e.importance, text, events: [e.id, ...(e.related ?? [])] });
+    // a goal line waits for the ball to land, like the banner and the score bar
+    candidates.push({ t: shownAt(match, e.t), type: e.type, importance: involved ? 1 : e.importance, text, events: [e.id, ...(e.related ?? [])] });
     if (involved) momentSeconds.add(e.t);
     if (e.type === "goal") {
       const reaction =

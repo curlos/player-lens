@@ -14,9 +14,10 @@ import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { StartOverlay } from "./components/StartOverlay";
 import { ClockContext, useClock, useClockState } from "./hooks/useClock";
 import { SettingsContext, useSettings, type Settings } from "./hooks/useSettings";
-import { setMuted as setAudioMuted, stopClip, unlockAudio } from "./lib/audio";
+import { audioDebug, playCue, setAudioPlaying, setMurmurLevel, setMuted as setAudioMuted, stopClip, stopReactions, unlockAudio } from "./lib/audio";
+import { crowdCues, murmurLevel } from "./lib/crowd";
 import { Clock } from "./lib/clock";
-import { ARROW_SEEK_S } from "./lib/config";
+import { ARROW_SEEK_S, CONTROLS_HIDE_MS } from "./lib/config";
 import { fetchMatchList, loadMatch, type MatchData } from "./lib/match";
 import { loadFlag, saveFlag } from "./lib/storage";
 import type { Lang, MatchSummary, Mode } from "./types";
@@ -27,6 +28,8 @@ const BOX_W = 113;
 const BOX_H = 79;
 /** Widest pitch box that still leaves room for the highlights row (up to two rows, about 5.5rem) below it. */
 const BOX_WIDTH_CSS = `min(100cqw, calc((100cqh - 5.5rem) * ${BOX_W} / ${BOX_H}))`;
+/** Fullscreen: the largest box that fits the screen at the same aspect ratio (the rest is black bars). */
+const BOX_WIDTH_FULLSCREEN_CSS = `min(100vw, calc(100vh * ${BOX_W} / ${BOX_H}))`;
 
 function usePersistentFlag(key: string, fallback: boolean): [boolean, (v: boolean) => void] {
   const [v, setV] = useState(() => loadFlag(key, fallback));
@@ -61,8 +64,35 @@ export default function App() {
   // Dev only (removed from production builds): lets a browser session put the match in a given
   // state for visual checks, e.g. __playerLens.clock.seek(2330).
   useEffect(() => {
-    if (import.meta.env.DEV) Object.assign(window, { __playerLens: { clock, select: setSelected } });
+    if (import.meta.env.DEV) Object.assign(window, { __playerLens: { clock, select: setSelected, audio: audioDebug } });
   }, [clock]);
+
+  // Crowd: each frame plays the cues crossed since the last one (never across a seek) and sets the
+  // murmur; pausing suspends the audio. Audio only listens to the clock, it never holds it up.
+  useEffect(() => {
+    if (!match) return;
+    let prevT = clock.t;
+    let seeks = clock.getState().seekCount;
+    const offFrame = clock.subscribeFrame((t) => {
+      const { playing, rate, seekCount } = clock.getState();
+      if (seekCount !== seeks) {
+        seeks = seekCount;
+        stopReactions();
+      } else if (playing) {
+        for (const cue of crowdCues(match, prevT, t, rate)) playCue(cue);
+      }
+      prevT = t;
+      setMurmurLevel(murmurLevel(match, t));
+    });
+    const offState = clock.subscribeState(() => setAudioPlaying(clock.getState().playing, clock.ended));
+    return () => {
+      offFrame();
+      offState();
+      // a new match gets a new clock that starts paused and never reports it, so silence the old one here
+      stopReactions();
+      setAudioPlaying(false);
+    };
+  }, [clock, match]);
 
   useEffect(() => {
     fetchMatchList()
@@ -148,6 +178,18 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [ftDismissed, setFtDismissed] = useState(false);
   const moveTimer = useRef(0);
+  const stage = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  // follows the browser, so Esc (or the browser's own exit) updates the button too
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement != null && document.fullscreenElement === stage.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void stage.current?.requestFullscreen().catch(() => {}); // refused (iframe, iPhone): stay inline
+  }, []);
   const started = state.started;
   const ended = !!match && started && clock.t >= match.duration;
 
@@ -188,11 +230,12 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
   const onMouseMove = () => {
     setRecentMove(true);
     window.clearTimeout(moveTimer.current);
-    moveTimer.current = window.setTimeout(() => setRecentMove(false), 2500);
+    moveTimer.current = window.setTimeout(() => setRecentMove(false), CONTROLS_HIDE_MS);
   };
 
-  // Hidden by default; appears on mouse move or pause (and stays while the View popover is open).
+  // Hidden by default; appears on mouse move over the pitch or on pause (and stays while the View popover is open).
   const barVisible = !started || !state.playing || recentMove || popoverOpen;
+  const boxW = fullscreen ? BOX_WIDTH_FULLSCREEN_CSS : BOX_WIDTH_CSS;
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 font-sans text-zinc-100 lg:h-screen lg:flex-row">
@@ -201,15 +244,24 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
           // Below lg the page is one column with no definite height, so the container measures its width
           // only (cqh then falls back to the viewport); from lg up it fills the row and measures both.
           className="relative flex flex-col items-center [container-type:inline-size] lg:min-h-[300px] lg:flex-1 lg:[container-type:size]"
-          onMouseMove={onMouseMove} onClick={() => setPopoverOpen(false)}>
+          onClick={() => setPopoverOpen(false)}>
+          {/* the fullscreen target: in fullscreen it fills the screen in black and centers the pitch box */}
+          <div
+            ref={stage}
+            // the cursor hides with the control bar, as in a video player
+            className={`${fullscreen ? "flex items-center justify-center bg-black" : "shrink-0"} ${started && !barVisible ? "cursor-none" : ""}`}
+            // only the pitch wakes the control bar (not the highlights row below it); in fullscreen the
+            // black bars count as pitch too
+            onMouseMove={onMouseMove}
+          >
           <div
             className="relative shrink-0"
             style={{
-              width: BOX_WIDTH_CSS,
-              height: `calc(${BOX_WIDTH_CSS} * ${BOX_H} / ${BOX_W})`,
+              width: boxW,
+              height: `calc(${boxW} * ${BOX_H} / ${BOX_W})`,
               background: "#2E5A30",
               // in box units, not %: percentage padding would resolve against the parent's width
-              padding: `calc(${BOX_WIDTH_CSS} * ${7 / BOX_W}) calc(${BOX_WIDTH_CSS} * ${4 / BOX_W}) calc(${BOX_WIDTH_CSS} * ${4 / BOX_W})`,
+              padding: `calc(${boxW} * ${7 / BOX_W}) calc(${boxW} * ${4 / BOX_W}) calc(${boxW} * ${4 / BOX_W})`,
             }}
           >
             {match && <Pitch match={match} dimmed={ended} />}
@@ -229,6 +281,8 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
                 disabled={!started}
                 popoverOpen={popoverOpen}
                 setPopoverOpen={setPopoverOpen}
+                fullscreen={fullscreen}
+                onToggleFullscreen={toggleFullscreen}
               />
             )}
             {!started && <StartOverlay match={match} matchId={matchId} matches={matches} error={error} onStart={start} onPickMatch={onPickMatch} />}
@@ -246,6 +300,7 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
                 }}
               />
             )}
+          </div>
           </div>
           {match && (
             <div className="mt-2 w-full" style={{ maxWidth: BOX_WIDTH_CSS }}>

@@ -12,7 +12,7 @@ import { useSettings } from "../hooks/useSettings";
 import { deltaColor } from "../lib/colors";
 import { DOT_R, POP_MIN_DELTA_OTHERS, VISUAL_S } from "../lib/config";
 import { deltaLabel, lastIndexAtOrBefore } from "../lib/format";
-import { eventsInWindow, positionAt, type MatchData } from "../lib/match";
+import { eventsInWindow, goalRevealT, positionAt, shownAt, type MatchData } from "../lib/match";
 import type { MatchEvent } from "../types";
 
 interface Props {
@@ -21,7 +21,8 @@ interface Props {
   children: ReactNode;
 }
 
-const WINDOW = Math.max(...Object.values(VISUAL_S));
+// +1: a goal's visuals start up to a second after its time (ball in flight)
+const WINDOW = Math.max(...Object.values(VISUAL_S)) + 1;
 const FLASH_TYPES = new Set(["tackle", "interception", "block", "clearance", "save", "gk_claim", "gk_sweep", "aerial_duel"]);
 const PULSE_TYPES = new Set(["pressure", "counterpress", "pressure_regain"]);
 
@@ -102,7 +103,7 @@ export function PitchOverlays({ match, children }: Props) {
       })}
       {/* goal net flash on the goal that was scored */}
       {recent
-        .filter((e) => e.type === "goal" && t - e.t <= VISUAL_S.goalBanner)
+        .filter((e) => e.type === "goal" && t >= goalRevealT(match, e) && t - goalRevealT(match, e) <= VISUAL_S.goalBanner)
         .map((e) => {
           const right = e.team === "azc";
           return (
@@ -115,7 +116,7 @@ export function PitchOverlays({ match, children }: Props) {
               fill="rgba(255,255,255,0.35)"
               stroke="#fff"
               strokeWidth={0.15}
-              opacity={fade(t, e.t, VISUAL_S.goalBanner)}
+              opacity={fade(t, goalRevealT(match, e), VISUAL_S.goalBanner)}
             />
           );
         })}
@@ -126,9 +127,12 @@ export function PitchOverlays({ match, children }: Props) {
   const pops = (() => {
     const out = [];
     const end = lastIndexAtOrBefore(match.ratingChanges, t);
-    for (let i = end; i >= 0 && match.ratingChanges[i].t > t - VISUAL_S.ratingPop; i--) {
+    // look one second further back: changes in a goal's second pop when the ball lands (shownAt)
+    for (let i = end; i >= 0 && match.ratingChanges[i].t > t - VISUAL_S.ratingPop - 1; i--) {
       const r = match.ratingChanges[i];
-      if (r.player === selected || Math.abs(r.delta) >= POP_MIN_DELTA_OTHERS) out.push(r);
+      const shown = shownAt(match, r.t);
+      if (shown > t || t - shown > VISUAL_S.ratingPop) continue;
+      if (r.player === selected || Math.abs(r.delta) >= POP_MIN_DELTA_OTHERS) out.push({ ...r, t: shown });
     }
     return out;
   })();

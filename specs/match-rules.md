@@ -48,7 +48,25 @@ Events (things that can change a rating) have their own codes, such as pass, sho
 
 ## Crowd sound
 
-About five royalty-free or CC0 loops (constant murmur, cheer, big roar, groan, boo and whistle) played through the browser's Web Audio. The murmur is always on. The event importance score picks the clip and volume. Azure City is the home side, so the crowd cheers Azure's moments and groans or whistles at Redmond's chances. A mute button and a first click unlock audio.
+Eight wordless CC0 recordings from Freesound (murmur, roar, cheer, "ooh", an anguished "OHHH", gasp, boos, a real referee whistle; credits in `web/public/audio/crowd/CREDITS.md`) played through the browser's Web Audio. The murmur, goal roar, near-miss, conceded-goal "OHHH" and cheer are takes from one real football stadium recording, so the crowd sounds like a stadium; each take must be wordless (owner checks by ear), so no real club, chant or language is heard. Built in Phase 2 (owner, Oct 26). Azure City is the home crowd. Code: `web/src/lib/crowd.ts` (pure cue rules, tested) and `web/src/lib/audio.ts` (playback); every volume and timing is a knob in `CROWD` and `CROWD_CLIPS` in `web/src/lib/config.ts`.
+
+| Moment | Azure | Redmond |
+| --- | --- | --- |
+| Goal (when the ball lands, `goalRevealT`) | roar | anguished "OHHH", then the home crowd goes quiet (murmur at 35% for 10 s, easing back) |
+| Shot saved, missed or blocked | "ooooh... aww", louder with importance | nervous gasp from importance 0.4 |
+| Penalty awarded | whistle + cheer | whistle + boos |
+| Yellow card | whistle + boos | whistle + cheer |
+| Red card | whistle + long loud boos | whistle + long loud cheer |
+| Kickoff | whistle | whistle |
+| Full time | three whistle blasts, murmur fades out | |
+
+- The murmur is always on and swells as the ball nears a goal, more when Azure attack.
+- A second yellow merged into a red reacts once (as the red); two decisions in one second share one whistle. Fouls and offsides don't whistle (owner, Oct 26: about 30 a match made it a constant peep).
+- Each clip starts where its sound rises, so the loud part lands about 0.3 to 0.8 s after the moment; levels are matched per clip (`norm`).
+- Seeking plays nothing for the skipped events and fades out reactions still sounding. Pausing silences everything (the audio context is suspended). At 10x and 30x only goals and red cards draw a crowd reaction, but the referee still whistles every card and the penalty; the murmur stays on at every speed. For cards and the penalty the whistle sounds first and the crowd answers 0.4 s later (`CROWD.afterWhistleS`). Above 1x each reaction is shortened in proportion to the speed (12 s roar: 6 s at 2x, 3 s at 4x), never below 2.5 s, at its normal pitch (owner, Oct 26).
+- Mute (the speaker button in the playback bar, between play/pause and the clock) silences the crowd, and the commentary voice from Phase 3. The Start click unlocks audio; the clips load in the background after it, so the replay never waits.
+- Commentary on top (Phase 3): the voice wins. While a clip plays, the crowd is "ducked" to about 35% of its volume (60% under a goal roar, so the roar still comes through), dropping in 0.2 s and recovering over 1 s after the line (`CROWD.duck*` knobs, already in config).
+- No ball-kick sounds: about 900 passes a match would be a constant tapping at high speed and would compete with the commentary voice.
 
 ## Spoken commentary
 

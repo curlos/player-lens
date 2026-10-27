@@ -30,6 +30,11 @@
   input[type="checkbox"]:not(:disabled) {
     cursor: pointer;
   }
+  /* Dark grey scrollbars (thin thumb on a grey track) so the default bright ones don't glare on the dark UI. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #52525b #27272a;
+  }
   :focus-visible {
     outline: 2px solid #a3e635;
     outline-offset: 2px;

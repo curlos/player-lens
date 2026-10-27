@@ -13,7 +13,6 @@ import { CHUNK_S, LATE_LINE_DROP_S, MAX_CHUNK } from "../lib/config";
 import { minuteLabel } from "../lib/format";
 import type { MatchData } from "../lib/match";
 import type { CommentaryChunk, CommentaryLine, Lang, Mode, Trace } from "../types";
-import { SpeakerIcon } from "./icons";
 
 const chunkKey = (match: string, player: string, mode: Mode, lang: Lang, chunk: number) => `${match}|${player}|${mode}|${lang}|${chunk}`;
 
@@ -82,7 +81,7 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
   const anchorKey = `${seekCount}|${player}|${atOneX}`;
   const [anchor, setAnchor] = useState({ key: anchorKey, t: clock.t });
   if (anchor.key !== anchorKey) setAnchor({ key: anchorKey, t: clock.t });
-  const { mode, setMode, lang, setLang, muted, setMuted } = useSettings();
+  const { mode, setMode, lang, setLang, muted } = useSettings();
   const cache = useRef(new Map<string, CommentaryChunk>());
   const pending = useRef(new Set<string>());
   const [, setVersion] = useState(0);
@@ -172,14 +171,6 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
         <Segmented<Mode> value={mode} onChange={setMode} options={[["casual", "Casual"], ["analyst", "Analyst"]]} />
         <div className="flex items-center gap-2">
           <Segmented<Lang> value={lang} onChange={setLang} options={[["en", "EN"], ["es", "ES"]]} />
-          <button
-            type="button"
-            aria-label={muted ? "Unmute" : "Mute"}
-            onClick={() => setMuted(!muted)}
-            className={!atOneX || muted ? "text-zinc-600" : "text-zinc-300 hover:text-white"}
-          >
-            <SpeakerIcon off={muted || !atOneX} className="h-4 w-4" />
-          </button>
         </div>
       </div>
       <div aria-live="polite" lang={lang}>

@@ -1,7 +1,7 @@
 /** Score bar centered at the top of the pitch: AZC, score, RDM, clock. Cards appear only once a team has one. */
 import { useMatchTime } from "../hooks/useClock";
 import { clockLabel } from "../lib/format";
-import { scoreAt, teamCardsAt, type MatchData } from "../lib/match";
+import { shownScoreAt, teamCardsAt, type MatchData } from "../lib/match";
 import type { TeamId } from "../types";
 
 function Cards({ match, team, t }: { match: MatchData; team: TeamId; t: number }) {
@@ -20,7 +20,7 @@ function Cards({ match, team, t }: { match: MatchData; team: TeamId; t: number }
 
 export function ScoreBar({ match }: { match: MatchData }) {
   const t = useMatchTime(10);
-  const score = scoreAt(match, t);
+  const score = shownScoreAt(match, t);
   const { azc, rdm } = match.teams;
   return (
     <div className="flex items-stretch overflow-visible rounded-md text-[15px] font-semibold shadow-lg shadow-black/40 sm:text-lg">
