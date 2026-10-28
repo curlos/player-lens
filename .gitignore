@@ -34,5 +34,3 @@ docs/hackathon-rules.md
 
 # Seed-search cache (regenerable, tied to the current simulator; see scripts/find_seeds.py)
 data/seed_search.jsonl
-data/audio
-data/commentary
