@@ -21,7 +21,7 @@ world.json (teams, players, attributes, formations)
         |
         v
  commentary cache (JSON + audio): hero match and default star pre-generated offline,
- other players generated on demand in 1-minute chunks under a daily spend cap
+ other players generated on demand in 1-minute chunks under an all-time spend cap
         |
         v
  FastAPI: static match files + commentary chunks  ------>  React frontend (browser plays the match back locally, SVG pitch)
@@ -136,7 +136,7 @@ Calibrate one knob at a time: tempo, then pass intercept, then shot propensity, 
 - **Shape check** every 30 to 45 s per player (position vs formation slot, work rate, tracking back), -0.05 to +0.05 or a silent "no change" entry.
 - **Goalkeeper:** save = +0.1 + 0.8 x xG (cap +0.6); goal conceded = -(0.2 + 0.7 x (1 - xG)).
 - **Error leading to goal:** last error before the goal gets -1.0; up to two earlier errors in the chain get -0.3 each; the simulator links the goal to its cause events.
-- **Event importance** (0 to 1): base weight by event type x context (late, close score, title decider, selected player involved), nudged by rating change. 0.8 or more is ecstatic, 0.4 to 0.8 lively, 0.15 to 0.4 calm, under 0.15 filler only (used when the 15 s silence limit is reached). Code computes it; the commentator receives it as a tone tag. It also picks crowd clips and volume.
+- **Event importance** (0 to 1): base weight by event type x context (late, close score, title decider, selected player involved), nudged by rating change. 0.8 or more is ecstatic, 0.4 to 0.8 lively, 0.15 to 0.4 calm, under 0.15 quiet-spell lines only (after 25 s with no line). Code computes it; the commentator receives it as a tone tag. It also picks crowd clips and volume.
 
 ## 5. Agent pipeline
 
@@ -154,7 +154,7 @@ Roster (confirmed Oct 24). One job each, each reads the previous output and writ
 
 **Personalizer is a separate agent (decided Oct 24).** The Commentator writes one canonical, fact-based line per moment and Fact Guard checks it once; the Personalizer then rewrites it into the four versions (Casual or Analyst, English or Spanish). This avoids running the Commentator and Fact Guard four times per moment and gives the pipeline a clear, visible handoff. Guard rule: the Personalizer may only use facts already present in the checked line and the moment's fact list, and a cheap deterministic check confirms that every number and name in each variant appears in those facts; a failed variant retries once, then falls back to the canonical line or a template. Final pipeline: Interpreter, Moments, Commentator, Fact Guard, Personalizer, Voice Director.
 
-**Commentary cadence (decided Oct 24).** The selected player's commentary is a near-continuous stream: the gap between the end of one clip and the start of the next is at least 5 s and at most 15 s. Big moments (importance 0.8 or more: goals, red cards, penalties) may interrupt the 5 s minimum. Lines are short (about 6 to 14 words, 2 to 5 s of speech). Triggers, in priority order: a goal or card anywhere in the match; a key event involving the player (shot, key pass, tackle, foul, card); a rating change of 0.10 or more; an off-ball moment (pressure regain, counterpress, recovery run, marking denial, decoy run); and, when nothing else fires within the 15 s limit, a filler line built from code-computed facts (current activity, distance run, passes completed, rating trend, position relative to the ball, team spell). After a goal: one line immediately, a short reaction about 8 s later, then back to normal. If a line would start before the previous clip ends, the lower-importance one is dropped. Above 1x speed (2x to 30x) commentary is off and no commentary is fetched. Expect roughly 450 lines per player per match, about 1.5 times the earlier 300-moment estimate, so measure cost on a small batch; filler lines must draw on enough distinct facts to avoid repetition.
+**Commentary cadence (decided Oct 24, revised Oct 27).** The commentator speaks when something happens, not to fill air: the gap between the end of one clip and the start of the next is at least 5 s, and after 25 s with no line a quiet-spell line fills in. A quiet-spell line describes the game around the ball, like a normal broadcast (the latest on-ball event at that second, preferring one near the selected player so he stays in the picture: who, what, where, built by code from the events), and only at most every 3 minutes is it a stat line about the selected player, on one rotating topic (distance, rating, activity); what he is doing is mentioned only when it changed (Oct 27, owner: 15 s stat fillers were repetitive, and a quiet player such as a goalkeeper needs the game around him). Big moments (importance 0.8 or more: goals, red cards, penalties) may interrupt the 5 s minimum. Lines are short (about 6 to 14 words, 2 to 5 s of speech). Triggers, in priority order: a goal or card anywhere in the match; a key event involving the player (shot, key pass, tackle, foul, card); every other row of the player's rating log, any non-zero change however small, good or bad (owner, Oct 27: the log is what the rating is made of; dispossessions and position slips included); an off-ball moment (pressure regain, counterpress, recovery run, marking denial, decoy run); and, when nothing else fires within 25 s, a quiet-spell line (the play around the ball, or at most every 3 minutes a filler line built from code-computed facts (current activity, distance run, passes completed, rating trend, position relative to the ball, team spell)). After a goal: one line immediately, a short reaction about 8 s later, then back to normal. If a line would start before the previous clip ends, the lower-importance one is dropped, except a rating-log line: it waits up to 10 s, and failing that it is said together with the previous rating line, so no visible rating change goes uncommented. Above 1x speed (2x to 30x) commentary is off and no commentary is fetched. Expect roughly 230 to 245 lines per player per match, one every 22 to 23 s on average (real events and rating-log moments always get a line and say how the rating moved; most of the rest describe the play); filler lines must draw on enough distinct facts to avoid repetition. A line that arrives while the previous clip still plays waits for it (dropped after 6 s); only a big moment cuts in.
 
 The rating engine sits beside this as a deterministic step; its output is shared state, not an LLM agent.
 
@@ -178,7 +178,7 @@ The rating engine sits beside this as a deterministic step; its output is shared
 - **Commentary streams like video:** split each match into 1-minute chunks per player (90 per match). Generate the chunk at the playhead plus the next one, and cache each chunk by (match seed, player, mode, language, chunk). Chunk size and look-ahead are tunable once real call times are measured.
 - **Seeking to an uncached chunk:** pitch and ratings jump at once. The commentary panel shows "Preparing commentary" and starts at the next moment when ready (target: a few seconds, to be measured). Lines that arrive more than about 10 seconds late are dropped, never read out stale.
 - **Hero match and default star:** fully pre-generated (text and audio) before the demo, so the judged path never buffers.
-- **Spend guard:** a daily cap on LLM chunks, set by an env var. Above the cap, uncached chunks fall back to the rating log plus short template lines (no LLM call).
+- **Spend guard:** an all-time cap on live spend (model + voice), `LIVE_CAP_USD`. Generated chunks are cached for good on an Azure Files share, so spend has a natural ceiling and the cap sits just above it. Above the cap, uncached chunks fall back to the rating log plus short template lines (no LLM call).
 - **Match library:** exactly three matches, each with a stored seed and stored simulator output, all Azure City vs Redmond United on different matchdays (there are only two clubs): the hero (3-2, matchday 38), a blowout (4-0 or 5-0, for example matchday 19) and a 1-1 draw (optionally with a red card). A 0-0 is the cheap fourth if time allows. No user-entered seeds in the UI. Extra matches get commentary only for players someone actually selects.
 - **Cut order:** extra matches go before anything on the hero path.
 
@@ -188,7 +188,7 @@ The rating engine sits beside this as a deterministic step; its output is shared
 - The replay clock runs in the browser from the match files and never blocks on AI.
 - **SSE** is not used: the match is fully precomputed, so there is nothing to push. The browser downloads the match files once and plays them back locally; commentary arrives as plain GET requests for 1-minute chunks.
 - Endpoints (draft): static files at /data/matches/\<match\_id>/{meta,events,ratings,positions}.json, GET /matches (the library list), GET /commentary?match&player&mode&lang&chunk (cached 1-minute chunk, text plus audio URLs), GET /agents/trace?line=\<id> ("How this was made").
-- Live LLM calls for anonymous visitors happen only for uncached commentary chunks and only under the daily spend cap (env var; it starts at 0, meaning cache and template fallback only, until the owner raises it). The hero match and default star are fully pre-generated.
+- Live LLM calls for anonymous visitors happen only for uncached commentary chunks and only under the all-time spend cap (env var; it starts at 0, meaning cache and template fallback only, until the owner raises it). The hero match and default star are fully pre-generated.
 
 ## 7. Frontend
 
@@ -299,6 +299,6 @@ Azure free account: $200 credit for 30 days. Sign up early so it covers judging 
 
 - [x] Final attribute list: confirmed Oct 24 (12 outfield plus GK Shot-stopping)
 - [x] Final agent roster: confirmed Oct 24 (Personalizer is a separate agent)
-- [x] Commentary cadence: decided Oct 24 (minimum gap 5 s, maximum silence 15 s; see Commentary cadence above)
+- [x] Commentary cadence: decided Oct 24, revised Oct 27 (minimum gap 5 s, a quiet-spell line after 25 s of silence, a stat line at most every 3 minutes; see Commentary cadence above)
 - [x] Redmond formation: 4-4-2
 - [x] Rating deltas tuning: Closed Oct 26 (owner): first-pass values kept as final for the hackathon; see docs/decisions.md

@@ -14,8 +14,8 @@ import { Sidebar, type SidebarTab } from "./components/Sidebar";
 import { StartOverlay } from "./components/StartOverlay";
 import { ClockContext, useClock, useClockState } from "./hooks/useClock";
 import { SettingsContext, useSettings, type Settings } from "./hooks/useSettings";
-import { audioDebug, playCue, setAudioPlaying, setMurmurLevel, setMuted as setAudioMuted, stopClip, stopReactions, unlockAudio } from "./lib/audio";
-import { crowdCues, murmurLevel } from "./lib/crowd";
+import { audioDebug, playCue, setAudioPlaying, setMurmurLevel, setMuted as setAudioMuted, setVoiceDanger, stopClip, stopReactions, unlockAudio } from "./lib/audio";
+import { crowdCues, dangerLevel, murmurLevel } from "./lib/crowd";
 import { Clock } from "./lib/clock";
 import { ARROW_SEEK_S, CONTROLS_HIDE_MS } from "./lib/config";
 import { fetchMatchList, loadMatch, type MatchData } from "./lib/match";
@@ -83,6 +83,7 @@ export default function App() {
       }
       prevT = t;
       setMurmurLevel(murmurLevel(match, t));
+      setVoiceDanger(dangerLevel(match, t));
     });
     const offState = clock.subscribeState(() => setAudioPlaying(clock.getState().playing, clock.ended));
     return () => {

@@ -2,12 +2,23 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { matchDataPlugin } from "./scripts/match-data-plugin";
 
-// The match files stay in the repo-root data/ folder; the plugin serves them in dev and preview,
-// the same URLs FastAPI serves in production (specs/agents-backend.md, "Backend endpoints").
+// The match files, commentary, traces, recaps and commentary audio all come from FastAPI (`uvicorn app.main:app`,
+// port 8000; specs/agents-backend.md). The crowd clips are static files in web/public/audio/crowd/, so the audio
+// proxy key leaves /audio/crowd/ alone (a plain "/audio" key would 404 the crowd).
+const api = { target: process.env.API_URL ?? "http://127.0.0.1:8000", changeOrigin: true };
+const proxy = {
+  "/matches": api,
+  "/data": api,
+  "/commentary": api,
+  "/agents": api,
+  "/recap": api,
+  "^/audio/(?!crowd/)": api,
+};
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), matchDataPlugin()],
-  server: { port: 5173 },
+  plugins: [react(), tailwindcss()],
+  server: { port: 5173, proxy },
+  preview: { proxy },
   test: { include: ["src/**/*.test.ts"] },
 });

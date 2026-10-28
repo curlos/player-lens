@@ -1,16 +1,19 @@
 /**
- * Commentary source for the selected player.
+ * Commentary source for the selected player: GET /commentary for 1-minute chunks and
+ * GET /agents/trace for "How this was made" (specs/agents-backend.md).
  *
- * Phase 2 placeholder: template lines built by code from the player's events and rating log,
- * shaped exactly like CommentaryLine in agents/models.py (fact_check "template", audio_url null).
- * Phase 3 replaces the bodies of getCommentaryChunk and getTrace with GET /commentary and
- * GET /agents/trace; the callers don't change.
+ * A 202 {status: "preparing", retry_after} answer throws ChunkPreparing so the panel keeps showing
+ * "Preparing commentary" and asks again later; the replay clock never waits for it. Lines from the
+ * backend are re-timed with shownAt, so a goal line appears when the ball lands (the same moment as
+ * the banner), not at the kick.
  *
- * Cadence follows ARCHITECTURE "Commentary cadence": at least LINE_MIN_GAP_S between lines (big
- * moments may interrupt), a filler line when nothing fired for LINE_MAX_SILENCE_S, and a short
- * reaction about 8 s after a goal.
+ * Offline fallback (the saved replay has no backend): when the network itself fails, the chunk is
+ * built here from the player's events and rating log, shaped like CommentaryLine
+ * (fact_check "template", audio_url null) with the decided cadence (ARCHITECTURE "Commentary
+ * cadence"): at least LINE_MIN_GAP_S between lines (big moments may interrupt), a filler line when
+ * nothing fired for LINE_MAX_SILENCE_S, and a short reaction about 8 s after a goal.
  */
-import type { CommentaryChunk, CommentaryLine, Lang, MatchEvent, Mode, RatingEntry, Trace } from "../types";
+import type { CommentaryChunk, CommentaryLine, Lang, MatchEvent, Mode, Recap, RatingEntry, Trace } from "../types";
 import { CHUNK_S, LINE_MAX_SILENCE_S, LINE_MIN_GAP_S, MAX_CHUNK, SPOTLIGHT_MIN_IMPORTANCE } from "./config";
 import { activityAt, distanceKmAt, playerLabel, ratingAt, scoreAt, shownAt, type MatchData } from "./match";
 import { reasonText } from "./reasons";
@@ -29,9 +32,22 @@ const lineCache = new Map<string, CommentaryLine[]>();
 /** Source events per line id, for the trace. */
 const lineEvents = new Map<string, { line: CommentaryLine; events: string[] }>();
 
+/** The backend is still writing this chunk (HTTP 202): ask again after ``retryAfterS`` seconds. */
+export class ChunkPreparing extends Error {
+  constructor(readonly retryAfterS: number) {
+    super("Preparing commentary");
+  }
+}
+
+/** A goal's line starts when the ball lands, like the banner (shownAt); every other line starts at its own time. */
+export function retimeLines(match: MatchData, lines: CommentaryLine[]): CommentaryLine[] {
+  return lines.map((l) => ({ ...l, t: shownAt(match, l.t) }));
+}
+
 /**
  * One 1-minute commentary chunk for the selected player (chunk = floor(t / 60), 0 to 89).
- * Async on purpose: the Phase 3 version is a network call and may answer "preparing".
+ * Throws ChunkPreparing on a 202 and an Error on any other HTTP failure (the panel retries); when
+ * the network itself is unreachable it builds the chunk locally (offline fallback).
  */
 export async function getCommentaryChunk(
   match: MatchData,
@@ -40,34 +56,79 @@ export async function getCommentaryChunk(
   lang: Lang,
   chunk: number,
 ): Promise<CommentaryChunk> {
+  const c = Math.min(Math.max(chunk, 0), MAX_CHUNK);
+  let res: Response;
+  try {
+    res = await fetch(`/commentary?${new URLSearchParams({ match: match.id, player, mode, lang, chunk: String(c) })}`);
+  } catch {
+    return localChunk(match, player, mode, lang, c);
+  }
+  if (res.status === 202) {
+    const body = (await res.json().catch(() => ({}))) as { retry_after?: number };
+    throw new ChunkPreparing(body.retry_after ?? 3);
+  }
+  if (!res.ok) throw new Error(`commentary request failed (${res.status})`);
+  const data = (await res.json()) as CommentaryChunk;
+  return { ...data, lines: retimeLines(match, data.lines) };
+}
+
+/** The offline chunk: a slice of the locally built template lines. */
+async function localChunk(match: MatchData, player: string, mode: Mode, lang: Lang, chunk: number): Promise<CommentaryChunk> {
   const key = `${match.id}|${player}|${mode}|${lang}`;
   let lines = lineCache.get(key);
   if (!lines) {
     lines = buildLines(match, player, mode, lang);
     lineCache.set(key, lines);
   }
-  const c = Math.min(Math.max(chunk, 0), MAX_CHUNK);
-  const from = c * CHUNK_S;
-  const to = c === MAX_CHUNK ? Infinity : from + CHUNK_S;
-  return { match: match.id, player, mode, lang, chunk: c, status: "ready", lines: lines.filter((l) => l.t >= from && l.t < to) };
+  const from = chunk * CHUNK_S;
+  const to = chunk === MAX_CHUNK ? Infinity : from + CHUNK_S;
+  return { match: match.id, player, mode, lang, chunk, status: "ready", lines: lines.filter((l) => l.t >= from && l.t < to) };
 }
 
-/** "How this was made" for one line. Template lines have a single Template step. */
+/**
+ * "How this was made" for one line: the agents that produced it, from GET /agents/trace. Lines built
+ * locally (offline fallback) have a single Template step. Null when there is no trace.
+ */
 export async function getTrace(lineId: string): Promise<Trace | null> {
   const entry = lineEvents.get(lineId);
-  if (!entry) return null;
-  return {
-    line_id: lineId,
-    steps: [
-      {
-        agent: "Template",
-        summary: "Written by code from the event and rating log, no AI call",
-        text: entry.line.text,
-        fact_check: "template",
-      },
-    ],
-    events: entry.events,
-  };
+  if (entry) {
+    return {
+      line_id: lineId,
+      steps: [
+        {
+          agent: "Template",
+          summary: "Written by code from the event and rating log, no AI call",
+          text: entry.line.text,
+          fact_check: "template",
+        },
+      ],
+      events: entry.events,
+    };
+  }
+  try {
+    const res = await fetch(`/agents/trace?${new URLSearchParams({ line: lineId })}`);
+    return res.ok ? ((await res.json()) as Trace) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The full-time recap for one player, mode and language (GET /recap). Throws ChunkPreparing on a 202
+ * (still being written); null when the backend is unreachable or has none, so the card keeps its code-built text.
+ */
+export async function getRecap(matchId: string, player: string, mode: Mode, lang: Lang): Promise<Recap | null> {
+  try {
+    const res = await fetch(`/recap?${new URLSearchParams({ match: matchId, player, mode, lang })}`);
+    if (res.status === 202) {
+      const body = (await res.json().catch(() => ({}))) as { retry_after?: number };
+      throw new ChunkPreparing(body.retry_after ?? 3);
+    }
+    return res.ok ? ((await res.json()) as Recap) : null;
+  } catch (e) {
+    if (e instanceof ChunkPreparing) throw e;
+    return null;
+  }
 }
 
 /** Words to seconds of speech, clamped to the 2 to 5 s line length (guess: ~2.7 words per second). */

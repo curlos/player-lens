@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CROWD, CROWD_CLIPS } from "./config";
-import { crowdCues, murmurLevel } from "./crowd";
+import { crowdCues, dangerLevel, murmurLevel } from "./crowd";
 import { goalRevealT } from "./match";
 import { loadFixture } from "./testData";
 
@@ -96,5 +96,12 @@ describe("crowd director (hero md38_title_decider)", () => {
       expect(m).toBeLessThanOrEqual(CROWD.murmurBase + Math.max(CROWD.murmurHomeAttack, CROWD.murmurAwayAttack));
     }
     expect(murmurLevel(match, 5400)).toBe(0);
+  });
+  it("danger (the voice level) rises near either goal and is 0 after full time", () => {
+    const levels = Array.from({ length: Math.floor(match.duration) }, (_, s) => dangerLevel(match, s));
+    expect(Math.min(...levels)).toBe(0);
+    expect(Math.max(...levels)).toBeGreaterThan(0.9);
+    expect(levels.every((d) => d >= 0 && d <= 1)).toBe(true);
+    expect(dangerLevel(match, match.duration)).toBe(0);
   });
 });

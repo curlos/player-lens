@@ -121,6 +121,16 @@ function hush(match: MatchData, t: number): number {
 }
 
 /**
+ * How close the ball is to either goal at t, 0 (midfield) to 1 (on the goal line), over the same zones the murmur
+ * swells in. The commentary voice rises with it, like the crowd.
+ */
+export function dangerLevel(match: MatchData, t: number): number {
+  if (t >= match.duration) return 0;
+  const [x] = ballAt(match, t);
+  return Math.max(ramp(x, 70, 95), ramp(x, 35, 10));
+}
+
+/**
  * Murmur volume at t: a steady base that swells as the ball nears either goal, hushed after a
  * Redmond goal; silent after full time.
  */

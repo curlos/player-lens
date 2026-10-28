@@ -5,6 +5,7 @@ export type { RatingsFile, RatingEntry } from "./generated/ratings";
 export type { PositionsFile, EntityTrack } from "./generated/positions";
 export type { CommentaryChunk, CommentaryLine } from "./generated/commentary_chunk";
 export type { Trace, TraceStep } from "./generated/trace";
+export type { Recap } from "./generated/recap";
 
 export type TeamId = "azc" | "rdm";
 export type Mode = "casual" | "analyst";

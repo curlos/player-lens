@@ -1,0 +1,28 @@
+{
+  "additionalProperties": false,
+  "description": "The Commentator's one neutral English line for a moment.",
+  "properties": {
+    "moment_id": {
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "fact_ids_used": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Fact Ids Used",
+      "type": "array"
+    }
+  },
+  "required": [
+    "moment_id",
+    "text"
+  ],
+  "title": "CanonicalLine",
+  "type": "object"
+}

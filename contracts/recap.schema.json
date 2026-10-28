@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "description": "GET /recap response: the full-time paragraph for one player, mode and language.",
+  "properties": {
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "audio_url": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audio Url"
+    },
+    "duration_s": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration S"
+    }
+  },
+  "required": [
+    "text"
+  ],
+  "title": "Recap",
+  "type": "object"
+}

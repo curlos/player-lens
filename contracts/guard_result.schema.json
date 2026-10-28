@@ -1,0 +1,61 @@
+{
+  "additionalProperties": false,
+  "description": "Fact Guard's verdict on one line. ``before`` and ``after`` are set only when it fixed the line.",
+  "properties": {
+    "moment_id": {
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "fact_check": {
+      "enum": [
+        "pass",
+        "fixed",
+        "removed"
+      ],
+      "title": "Fact Check",
+      "type": "string"
+    },
+    "issues": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "before": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Before"
+    },
+    "after": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "After"
+    }
+  },
+  "required": [
+    "moment_id",
+    "text",
+    "fact_check"
+  ],
+  "title": "GuardResult",
+  "type": "object"
+}

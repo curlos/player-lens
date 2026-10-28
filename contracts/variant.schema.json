@@ -1,0 +1,39 @@
+{
+  "additionalProperties": false,
+  "description": "The Personalizer's version of a checked line for one mode and language.",
+  "properties": {
+    "moment_id": {
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "casual",
+        "analyst"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "lang": {
+      "enum": [
+        "en",
+        "es"
+      ],
+      "title": "Lang",
+      "type": "string"
+    },
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "moment_id",
+    "mode",
+    "lang",
+    "text"
+  ],
+  "title": "Variant",
+  "type": "object"
+}

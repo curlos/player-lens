@@ -71,6 +71,6 @@ Every event gets an importance score from 0 to 1, computed by code: a base weigh
 - 0.8 or more: ecstatic, longer line.
 - 0.4 to 0.8: lively.
 - 0.15 to 0.4: calm, short.
-- Under 0.15: filler only, used when the 15 s silence limit is reached (see ARCHITECTURE, Commentary cadence).
+- Under 0.15: filler only, used for quiet-spell lines after 25 s with no line (see ARCHITECTURE, Commentary cadence).
 
 The commentator gets the tone and the facts; it does not decide how important something is. Importance also picks crowd clips and volume.

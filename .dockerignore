@@ -1,0 +1,25 @@
+# Secrets and local state never enter the image
+.env
+.env.*
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.vscode
+.idea
+.DS_Store
+
+# Built in the image, or not needed at runtime
+web/node_modules
+web/dist
+tests
+docs
+specs
+scripts
+
+# Runtime writes and local-only data (PERSIST_DIR holds these in production)
+data/spend_ledger.jsonl
+data/commentary_ondemand
+data/seed_search.jsonl

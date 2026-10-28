@@ -1,0 +1,84 @@
+{
+  "additionalProperties": false,
+  "description": "One code-built fact the commentary may cite. Numbers and names live only in ``values``.",
+  "properties": {
+    "fact_id": {
+      "minLength": 1,
+      "title": "Fact Id",
+      "type": "string"
+    },
+    "t": {
+      "maximum": 5400,
+      "minimum": 0,
+      "title": "T",
+      "type": "number"
+    },
+    "kind": {
+      "enum": [
+        "goal",
+        "shot",
+        "key_pass",
+        "tackle",
+        "foul",
+        "card",
+        "rating_change",
+        "pressure_regain",
+        "counterpress",
+        "recovery_run",
+        "marking_denial",
+        "decoy_run",
+        "spell",
+        "filler_stat",
+        "play"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "player_id": {
+      "pattern": "^[a-z]{3}_\\d{2}$",
+      "title": "Player Id",
+      "type": "string"
+    },
+    "event_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Event Ids",
+      "type": "array"
+    },
+    "values": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      },
+      "title": "Values",
+      "type": "object"
+    },
+    "label": {
+      "default": "",
+      "title": "Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "fact_id",
+    "t",
+    "kind",
+    "player_id",
+    "event_ids"
+  ],
+  "title": "Fact",
+  "type": "object"
+}

@@ -7,12 +7,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useClock, useClockState, useMatchTime } from "../hooks/useClock";
 import { useSettings } from "../hooks/useSettings";
-import { playClip, stopClip } from "../lib/audio";
-import { getCommentaryChunk, getTrace } from "../lib/commentary";
+import { playClip, preloadClip, stopClip } from "../lib/audio";
+import { ChunkPreparing, getCommentaryChunk } from "../lib/commentary";
 import { CHUNK_S, LATE_LINE_DROP_S, MAX_CHUNK } from "../lib/config";
-import { minuteLabel } from "../lib/format";
 import type { MatchData } from "../lib/match";
-import type { CommentaryChunk, CommentaryLine, Lang, Mode, Trace } from "../types";
+import type { CommentaryChunk, CommentaryLine, Lang, Mode } from "../types";
+import { AgentTrace } from "./AgentTrace";
 
 const chunkKey = (match: string, player: string, mode: Mode, lang: Lang, chunk: number) => `${match}|${player}|${mode}|${lang}|${chunk}`;
 
@@ -31,42 +31,6 @@ function Segmented<T extends string>({ value, options, onChange }: { value: T; o
         </button>
       ))}
     </div>
-  );
-}
-
-function AgentTrace({ match, line }: { match: MatchData; line: CommentaryLine }) {
-  const [trace, setTrace] = useState<Trace | null>(null);
-  useEffect(() => {
-    let live = true;
-    getTrace(line.id).then((tr) => live && setTrace(tr));
-    return () => {
-      live = false;
-    };
-  }, [line.id]);
-  if (!trace) return <p className="mt-2 text-sm text-zinc-500">Loading trace…</p>;
-  return (
-    <ol className="mt-2 space-y-1.5 border-l border-zinc-700 pl-3 text-sm">
-      {trace.steps.map((s, i) => (
-        <li key={i} className="relative">
-          <span className="absolute -left-[15px] top-1 h-1.5 w-1.5 rounded-full bg-zinc-400" />
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium text-zinc-200">{s.agent}</span>
-            {s.fact_check && <span className="rounded bg-zinc-700 px-1.5 py-px text-xs text-zinc-300">{s.fact_check}</span>}
-          </div>
-          {s.summary && <p className="text-zinc-400">{s.summary}</p>}
-        </li>
-      ))}
-      {trace.events.length > 0 && (
-        <li className="text-zinc-500">
-          Source events:{" "}
-          {trace.events
-            .map((id) => match.eventById.get(id))
-            .filter((e) => e != null)
-            .map((e) => `${e.type.replace(/_/g, " ")} ${minuteLabel(e.t)}`)
-            .join(", ")}
-        </li>
-      )}
-    </ol>
   );
 }
 
@@ -91,10 +55,10 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
 
   const chunk = Math.min(Math.floor(t / CHUNK_S), MAX_CHUNK);
 
-  // Changing speed stops any clip that is playing.
+  // Changing speed, a seek, a player or match switch, or a mode or language change stops any clip that is playing.
   useEffect(() => {
     stopClip();
-  }, [rate]);
+  }, [rate, anchorKey, match.id, mode, lang]);
 
   useEffect(() => {
     if (!atOneX || !started) return; // no commentary requests above 1x
@@ -108,10 +72,12 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
       getCommentaryChunk(match, player, mode, lang, c)
         .then((res) => {
           cache.current.set(key, res);
+          for (const l of res.lines) if (l.t >= clock.t - LATE_LINE_DROP_S) preloadClip(l.audio_url); // ready to play without a delay
           setVersion((v) => v + 1);
         })
-        // a failed chunk is retried a few seconds later; the clock never waits for it
-        .catch(() => window.setTimeout(() => setRetry((r) => r + 1), 3000))
+        // a chunk the backend is still writing (202) is asked for again after its retry_after; a failed one after 3 s.
+        // Either way the clock never waits for it.
+        .catch((err: unknown) => window.setTimeout(() => setRetry((r) => r + 1), err instanceof ChunkPreparing ? err.retryAfterS * 1000 : 3000))
         .finally(() => pending.current.delete(key));
     }
   }, [match, player, mode, lang, chunk, atOneX, started, retry]);
@@ -138,7 +104,7 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
   useEffect(() => {
     if (!line || !atOneX || line.id === lastPlayed.current) return;
     lastPlayed.current = line.id;
-    if (!muted) playClip(line.audio_url ?? null);
+    if (!muted) playClip(line.audio_url ?? null, false, line.importance);
   }, [line, atOneX, muted]);
 
   const name = match.players.get(player)?.name ?? "";
@@ -156,11 +122,12 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
         <button
           type="button"
           onClick={() => setTraceOpen(traceOpen === line.id ? null : line.id)}
+          aria-expanded={traceOpen === line.id}
           className="mt-3 text-sm text-zinc-400 underline decoration-zinc-600 underline-offset-2 hover:text-zinc-200"
         >
           How this was made
         </button>
-        {traceOpen === line.id && <AgentTrace match={match} line={line} />}
+        {traceOpen === line.id && <AgentTrace match={match} lineId={line.id} />}
       </div>
     );
   }

@@ -137,15 +137,25 @@ export const CROWD_CLIPS = {
 export type CrowdClip = keyof typeof CROWD_CLIPS;
 
 export const CROWD = {
-  /** Master volume for the whole crowd (commentary voice sits above it from Phase 3). */
+  /** Master volume for everything: the crowd and the commentary voice share it, so Mute silences both. */
   master: 0.7,
+  /** Commentary voice level before the master gain at midfield (guess, tune by ear). It rises toward the goals like the crowd. */
+  voiceGain: 1.1, // owner: louder (was 0.8)
+  /** Extra voice level with the ball on a goal line: `voiceGain * (1 + voiceDangerBoost * danger)` (danger 0..1). */
+  voiceDangerBoost: 0.5,
+  /** Extra factor for big lines (importance >= 0.8: goals, cards involving the player). */
+  voiceBigBoost: 1.3,
+  /** A line that waited for the previous one to finish is dropped if it waited longer than this (seconds); guess. */
+  voiceQueueMaxS: 6,
   /**
-   * Phase 3 ducking (not used yet): while a commentary clip plays, the crowd drops to `duck` of its
-   * volume (`duckGoal` under a goal roar, so it still comes through), in `duckAttackS`, and comes
-   * back over `duckReleaseS` after the line ends.
+   * Ducking: while a commentary clip plays, the crowd drops to `duck` of its volume (`duckGoal`
+   * under a goal roar, so it still comes through), in `duckAttackS`, and comes back over
+   * `duckReleaseS` after the line ends.
    */
-  duck: 0.35,
-  duckGoal: 0.6,
+  duck: 1, // owner (Oct 27): no ducking, lowering the crowd under the voice broke immersion (was 0.35)
+  duckGoal: 1, // was 0.6
+  /** The whole crowd (murmur, roars, reactions) at a steady level all match, under the voice (owner, Oct 27: 60%, so the voice is easy to hear). */
+  crowdLevel: 0.6,
   duckAttackS: 0.2,
   duckReleaseS: 1,
   /** Murmur: always on; swells when the ball is near a goal, more for Azure's attacks. */

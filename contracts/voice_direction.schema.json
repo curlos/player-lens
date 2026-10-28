@@ -1,0 +1,63 @@
+{
+  "additionalProperties": false,
+  "description": "The Voice Director's speaking instructions for one variant; code turns them into SSML.",
+  "properties": {
+    "moment_id": {
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "casual",
+        "analyst"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "lang": {
+      "enum": [
+        "en",
+        "es"
+      ],
+      "title": "Lang",
+      "type": "string"
+    },
+    "pauses": {
+      "items": {
+        "type": "integer"
+      },
+      "title": "Pauses",
+      "type": "array"
+    },
+    "emphasis": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 2,
+      "title": "Emphasis",
+      "type": "array"
+    },
+    "rate": {
+      "default": "normal",
+      "enum": [
+        "slow",
+        "normal",
+        "fast"
+      ],
+      "title": "Rate",
+      "type": "string"
+    },
+    "style": {
+      "default": "default",
+      "title": "Style",
+      "type": "string"
+    }
+  },
+  "required": [
+    "moment_id",
+    "mode",
+    "lang"
+  ],
+  "title": "VoiceDirection",
+  "type": "object"
+}

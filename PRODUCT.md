@@ -193,7 +193,7 @@ Full numbers are in [Spec: Rating Model](specs/rating-model.md); match rules, ac
 
 - Code computes all numbers. The LLM only writes words.
 - AI runs only for the selected player.
-- The hero match and the default star are fully pre-generated once (Casual/Analyst x EN/ES); every other player's commentary is generated on demand in 1-minute chunks, cached, under a daily spend cap set by an env var (it starts at 0, meaning cache and template fallback only, until the owner raises it). Visitors cost $0 unless the cap is raised.
+- The hero match and the default star are fully pre-generated once (Casual/Analyst x EN/ES); every other player's commentary is generated on demand in 1-minute chunks, cached for good on a persistent share, under an all-time spend cap set by an env var (it starts at 0, meaning cache and template fallback only, until the owner raises it). Each chunk is paid for once, so total spend has a ceiling (every player, minute and variant, about $123 for all three matches); the cap sits just above it.
 - Small OpenAI models on the Azure free account ($200 credit, 30 days). Set a $5 budget alert. Claude in Foundry needs pay-as-you-go, so skip it.
 - Keys live in env vars only, never in the repo. Anyone cloning brings their own key.
 
@@ -208,6 +208,6 @@ Full numbers are in [Spec: Rating Model](specs/rating-model.md); match rules, ac
 - [x] Redmond formation: 4-4-2 (set in review for contrast with Azure's 4-3-3; change if you prefer)
 - [x] Extra attributes beyond the original 8 (see ARCHITECTURE)
 - [x] Final agent roster (see ARCHITECTURE)
-- [x] Commentary cadence: decided Oct 24 (at least 5 s and at most 15 s between lines; details in ARCHITECTURE)
+- [x] Commentary cadence: decided Oct 24, revised Oct 27 (at least 5 s between lines; after 25 s of silence a line about the play around the ball, a stat line at most every 3 minutes; details in ARCHITECTURE)
 - [x] Personalizer: separate agent (decided Oct 24)
 - [x] Rating-delta tuning: Closed Oct 26 (owner): first-pass values kept as final for the hackathon; see docs/decisions.md

@@ -1,0 +1,63 @@
+{
+  "additionalProperties": false,
+  "description": "A scheduled commentary moment: when code decided a line happens, plus the LLM's tone and reason.",
+  "properties": {
+    "moment_id": {
+      "minLength": 1,
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "t": {
+      "maximum": 5400,
+      "minimum": 0,
+      "title": "T",
+      "type": "number"
+    },
+    "trigger": {
+      "minLength": 1,
+      "title": "Trigger",
+      "type": "string"
+    },
+    "importance": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Importance",
+      "type": "number"
+    },
+    "tone": {
+      "default": "calm",
+      "enum": [
+        "calm",
+        "building",
+        "excited",
+        "tense",
+        "relieved",
+        "analytical"
+      ],
+      "title": "Tone",
+      "type": "string"
+    },
+    "fact_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Fact Ids",
+      "type": "array"
+    },
+    "why": {
+      "default": "",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "moment_id",
+    "t",
+    "trigger",
+    "importance",
+    "fact_ids"
+  ],
+  "title": "Moment",
+  "type": "object"
+}

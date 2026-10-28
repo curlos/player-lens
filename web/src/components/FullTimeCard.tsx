@@ -1,9 +1,14 @@
 /**
  * Full-time card: final score, the champions line for a title decider, the selected player's
  * match rating, their top three rating moments and a recap paragraph.
- * Recap: Phase 2 builds it from code facts; Phase 3 swaps in GET /recap (pre-generated text).
+ * Recap: GET /recap (pre-generated text and voice); the code-built paragraph below shows until it
+ * arrives and stays if the backend is unreachable.
  */
+import { useEffect, useState } from "react";
 import { useSettings } from "../hooks/useSettings";
+import { playClip, stopClip } from "../lib/audio";
+import { ChunkPreparing, getRecap } from "../lib/commentary";
+import type { Recap } from "../types";
 import { deltaColor } from "../lib/colors";
 import { deltaLabel, minuteLabel, ratingLabel } from "../lib/format";
 import { STANDINGS } from "../lib/config";
@@ -33,8 +38,28 @@ function recapText(match: MatchData, player: string, lang: "en" | "es"): string 
 }
 
 export function FullTimeCard({ match, player, onReplay, onPickAnother }: Props) {
-  const { lang, colorblind } = useSettings();
+  const { lang, mode, colorblind, muted } = useSettings();
+  const [recap, setRecap] = useState<Recap | null>(null);
   const p = match.players.get(player);
+
+  // The backend recap for this player, mode and language; a 202 ("still writing") is asked again after retry_after.
+  useEffect(() => {
+    let live = true;
+    let timer = 0;
+    setRecap(null);
+    const load = (attempt: number) =>
+      getRecap(match.id, player, mode, lang)
+        .then((r) => live && setRecap(r))
+        .catch((err: unknown) => {
+          if (live && err instanceof ChunkPreparing && attempt < 10) timer = window.setTimeout(() => load(attempt + 1), err.retryAfterS * 1000);
+        });
+    load(0);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+      stopClip();
+    };
+  }, [match.id, player, mode, lang]);
   const { azc, rdm } = match.meta.score;
   const champion = match.teams[titleWinner(STANDINGS, match.meta.score)];
   const top = [...(match.ratingLog.get(player) ?? [])].filter((r) => r.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
@@ -86,7 +111,19 @@ export function FullTimeCard({ match, player, onReplay, onPickAnother }: Props) 
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-300">{recapText(match, player, lang)}</p>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-300" lang={lang}>
+              {recap?.text ?? recapText(match, player, lang)}
+            </p>
+            {recap?.audio_url && (
+              <button
+                type="button"
+                disabled={muted}
+                onClick={() => playClip(recap.audio_url ?? null, true)}
+                className="mt-2 rounded-md bg-zinc-700 px-3 py-1 text-sm text-zinc-100 hover:bg-zinc-600 disabled:opacity-50"
+              >
+                {muted ? "Unmute to listen" : `Listen to the recap${recap.duration_s ? ` (${Math.round(recap.duration_s)} s)` : ""}`}
+              </button>
+            )}
           </div>
         )}
 

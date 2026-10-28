@@ -25,6 +25,8 @@ web/dist/
 
 # On-demand commentary cache written at runtime (pre-generated data/commentary/ is NOT ignored)
 data/commentary_ondemand/
+# Spend ledger: one line per live Azure call (tokens, characters, dollars); see scripts/spend.py
+data/spend_ledger.jsonl
 
 # Local-only notes (not published)
 CLAUDE.local.md
@@ -32,3 +34,5 @@ docs/hackathon-rules.md
 
 # Seed-search cache (regenerable, tied to the current simulator; see scripts/find_seeds.py)
 data/seed_search.jsonl
+data/audio
+data/commentary

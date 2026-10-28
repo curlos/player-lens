@@ -19,7 +19,7 @@ Live 2D synthetic football match. Click any player for a personal commentator an
 9. **Validate at every handoff.** Each agent's output is checked against its schema in `contracts/` before the next step.
 10. **The replay never waits on an AI call.**
 11. **No secrets in the repo.** Keys come from environment variables; `.env` is gitignored. Never commit keys, never print them.
-12. Do not call a live LLM from tests or validation runs. LLM calls happen in the offline pre-generation step (hero match and default star) and, for anonymous visitors, only for uncached commentary chunks under the daily spend cap (env var, starts at 0). Everything is cached by (match, player, mode, language, chunk).
+12. Do not call a live LLM from tests or validation runs. LLM calls happen in the offline pre-generation step (hero match and default star) and, for anonymous visitors, only for uncached commentary chunks under the all-time live spend cap (`LIVE_CAP_USD`, starts at 0). Everything is cached by (match, player, mode, language, chunk).
 13. **Scope is final.** Don't add 3D, substitutions, a database, accounts or extra features. Cut order if behind: extra matches, league table, Spanish, recaps, Analyst mode. Never cut the rating reason log or the "How this was made" trace.
 14. Never run git commit, git push, or open PRs. Leave all changes uncommitted; the developer reviews the diff and commits.
 

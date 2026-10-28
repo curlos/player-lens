@@ -10,7 +10,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from agents.models import ChunkPreparing, CommentaryChunk, Trace  # noqa: E402
+from agents.models import (  # noqa: E402
+    CanonicalLine, ChunkPreparing, CommentaryChunk, Fact, GuardResult, Moment, Recap, Trace, Variant, VoiceDirection,
+)
 from sim.models import EventsFile, Meta, PositionsFile, RatingsFile, World  # noqa: E402
 
 CONTRACTS = {
@@ -22,6 +24,13 @@ CONTRACTS = {
     "commentary_chunk.schema.json": CommentaryChunk,
     "commentary_preparing.schema.json": ChunkPreparing,
     "trace.schema.json": Trace,
+    "fact.schema.json": Fact,
+    "moment.schema.json": Moment,
+    "canonical_line.schema.json": CanonicalLine,
+    "guard_result.schema.json": GuardResult,
+    "variant.schema.json": Variant,
+    "voice_direction.schema.json": VoiceDirection,
+    "recap.schema.json": Recap,
 }
 
 
