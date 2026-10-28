@@ -19,7 +19,7 @@ interface Props {
 export function Sidebar({ match, tab, setTab, started, ended }: Props) {
   const { selected, select } = useSettings();
   return (
-    <aside className="flex min-h-0 flex-col gap-2 overflow-hidden bg-zinc-950 p-3 lg:h-full lg:py-4 lg:pl-0 lg:pr-4 lg:w-[360px] lg:shrink-0 xl:w-[400px]">
+    <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto bg-zinc-950 p-3 lg:h-full lg:py-4 lg:pl-0 lg:pr-4 lg:w-[360px] lg:shrink-0 xl:w-[400px]">
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-zinc-900 p-1 text-sm" role="tablist" aria-label="Sidebar">
         {(
           [
@@ -44,8 +44,8 @@ export function Sidebar({ match, tab, setTab, started, ended }: Props) {
       ) : tab === "player" ? (
         <>
           <PlayerCard match={match} player={selected} final={ended} />
-          <RatingLog match={match} player={selected} />
           <CommentaryPanel match={match} player={selected} started={started} />
+          <RatingLog match={match} player={selected} />
         </>
       ) : (
         <div className="min-h-0 overflow-y-auto">

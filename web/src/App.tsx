@@ -304,7 +304,7 @@ function MatchView({ match, matchId, matches, error, onPickMatch, tab, setTab }:
           </div>
           </div>
           {match && (
-            <div className="mt-2 w-full" style={{ maxWidth: BOX_WIDTH_CSS }}>
+            <div className="mt-2 w-full pb-4" style={{ maxWidth: BOX_WIDTH_CSS }}>
               <HighlightsRow match={match} />
             </div>
           )}

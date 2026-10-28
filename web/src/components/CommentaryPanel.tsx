@@ -48,6 +48,8 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
   const { mode, setMode, lang, setLang, muted } = useSettings();
   const cache = useRef(new Map<string, CommentaryChunk>());
   const pending = useRef(new Set<string>());
+  /** Chunks the backend answered "preparing" (202) for: the agents are writing them right now, the first time anyone watches. */
+  const writing = useRef(new Set<string>());
   const [, setVersion] = useState(0);
   const [retry, setRetry] = useState(0);
   const [traceOpen, setTraceOpen] = useState<string | null>(null);
@@ -71,13 +73,20 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
       pending.current.add(key);
       getCommentaryChunk(match, player, mode, lang, c)
         .then((res) => {
+          writing.current.delete(key);
           cache.current.set(key, res);
           for (const l of res.lines) if (l.t >= clock.t - LATE_LINE_DROP_S) preloadClip(l.audio_url); // ready to play without a delay
           setVersion((v) => v + 1);
         })
         // a chunk the backend is still writing (202) is asked for again after its retry_after; a failed one after 3 s.
         // Either way the clock never waits for it.
-        .catch((err: unknown) => window.setTimeout(() => setRetry((r) => r + 1), err instanceof ChunkPreparing ? err.retryAfterS * 1000 : 3000))
+        .catch((err: unknown) => {
+          if (err instanceof ChunkPreparing && !writing.current.has(key)) {
+            writing.current.add(key);
+            setVersion((v) => v + 1); // show "the agents are writing this minute"
+          }
+          window.setTimeout(() => setRetry((r) => r + 1), err instanceof ChunkPreparing ? err.retryAfterS * 1000 : 3000);
+        })
         .finally(() => pending.current.delete(key));
     }
   }, [match, player, mode, lang, chunk, atOneX, started, retry]);
@@ -112,7 +121,21 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
   if (!started) body = <p className="text-sm text-zinc-400">Waiting for kickoff</p>;
   else if (t >= match.duration) body = <p className="text-sm text-zinc-400">Full time</p>;
   else if (!atOneX) body = <p className="text-sm text-zinc-400">Commentary pauses at {rate}x speed</p>;
-  else if (!current) body = <p className="animate-pulse text-sm text-zinc-400">Preparing commentary</p>;
+  else if (!current) {
+    // a spinner, so a missing minute reads as loading; when the backend is writing it (202), say why nobody is talking yet
+    const beingWritten = writing.current.has(chunkKey(match.id, player, mode, lang, chunk));
+    body = (
+      <div role="status">
+        <p className="flex items-center gap-2 text-sm text-zinc-300">
+          <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-600 border-t-lime-400" />
+          <span className="animate-pulse">{beingWritten ? "The AI agents are writing this minute…" : "Preparing commentary…"}</span>
+        </p>
+        {beingWritten && (
+          <p className="mt-1.5 pl-6 text-xs text-zinc-500">First time anyone has watched {name} here: a few seconds, then it is saved for everyone.</p>
+        )}
+      </div>
+    );
+  }
   else if (!line) body = <p className="text-sm text-zinc-500">Following {name}…</p>;
   else {
     const big = line.importance >= 0.8;
@@ -127,7 +150,12 @@ export function CommentaryPanel({ match, player, started }: { match: MatchData; 
         >
           How this was made
         </button>
-        {traceOpen === line.id && <AgentTrace match={match} lineId={line.id} />}
+        {traceOpen === line.id && (
+          // the trace scrolls in its own box, so opening it never squeezes the rating log above it
+          <div className="mt-1 max-h-[35vh] overflow-y-auto pl-1 pr-1">
+            <AgentTrace match={match} lineId={line.id} />
+          </div>
+        )}
       </div>
     );
   }

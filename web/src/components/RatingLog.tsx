@@ -23,7 +23,7 @@ export function RatingLog({ match, player }: { match: MatchData; player: string 
   for (let i = end; i >= 0 && rows.length < MAX_ROWS; i--) rows.push(log[i]);
 
   return (
-    <section className="flex min-h-[7rem] flex-1 flex-col rounded-xl border border-white/5 bg-zinc-900/80 p-3">
+    <section className="flex min-h-[10rem] flex-1 flex-col rounded-xl border border-white/5 bg-zinc-900/80 p-3">
       <h3 className="text-sm font-medium text-zinc-200">Rating log</h3>
       <div className="mt-1.5 grid grid-cols-[3.25rem_3.25rem_1fr] border-b border-white/10 pb-1 text-xs text-zinc-500">
         <span>Minute</span>

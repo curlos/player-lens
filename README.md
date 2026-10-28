@@ -4,6 +4,8 @@ A live 2D synthetic football match where you follow one player: a personal AI co
 
 **Live demo:** https://player-lens.wittysea-a332ed57.eastus.azurecontainerapps.io (click Start match; the hero match follows G. Lima, #9 Azure City)
 
+![Player Lens: Lima's 39th-minute equaliser, his commentary line and his rating log](docs/screenshot.jpg)
+
 All clubs and players are fictional (Atlas League: Azure City vs Redmond United), and all match data is synthetic.
 
 ## The pitch
